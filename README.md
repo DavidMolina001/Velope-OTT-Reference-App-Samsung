@@ -51,6 +51,11 @@ the TV answers but `sdb connect` fails, start sdb once from the Terminal app.
 
 ## Desktop browser (development)
 
+To see the TV layout in desktop Chrome, use DevTools device mode with a custom device of
+**1920 × 1080 at device pixel ratio 1**, and reload after switching to it: the app fits its
+1920 × 1080 scene to the window size it finds at start-up, so a window resized afterwards shows
+a scene sized for the old window.
+
 Requires Node 20+ and pnpm 10.
 
 ```sh
@@ -88,6 +93,17 @@ The exit dialog asks "Exit Velope TV?" with focus on No: Left/Right choose, OK c
 cancels and returns focus to where it was. Yes closes the app; reopen it from the TV's Apps list.
 
 Browsing behaviour:
+
+- **Hero banner** (`HeroBanner.tsx`, cycle in `Home.tsx`), after the Apple TV app's: the first 6
+  titles with wide artwork from the current genre's first row, each with its backdrop, title,
+  year and rating, synopsis, **Play** and a watchlist **+ / ✓** button, and page dots. One second
+  after the hero shows, Big Buck Bunny plays full screen *behind* the canvas (the canvas is
+  see-through, `clearColor` 0, body background in CSS) with sound; the artwork fades out and the
+  gradients, text and buttons stay on top. The active dot stretches into a pill that fills over
+  15 s, then the next item comes in (looping). Left/Right move between Play and the tick; Right
+  from the tick is the next item, Left from Play the previous one. Down moves to the rows (the
+  hero slides away and its video stops), Up returns; Back from the rows returns to the hero, Back
+  on the hero opens the exit dialog. Play opens the full-screen player straight from the hero.
 
 - **Focus walks first.** Moving right, focus crosses the screen to the middle tile (the 4th of 7),
   then stays there while the row slides and cycles forever. Moving left, focus walks back to the

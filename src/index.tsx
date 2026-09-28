@@ -48,7 +48,8 @@ Config.throttleInput = 100
 Config.rendererOptions = {
   appWidth: layout.width,
   appHeight: layout.height,
-  clearColor: colors.background,
+  // Transparent: the body's CSS background shows through, and so does the hero video behind it.
+  clearColor: 0x00000000,
   numImageWorkers: 0,
   // Frame telemetry only when the counter is shown (?fps=1 on the web)
   fpsUpdateInterval: host.showFps ? 300 : 0,

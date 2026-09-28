@@ -8,11 +8,11 @@
 //   play/pause state, progress bar, times) and its own remote handling while it is up;
 // - exit: Back at the root of the app closes it, as Samsung's app guidelines expect.
 import { loadFonts } from '@solidtv/solid'
-import type { AppHost, AppPlayer, AppPreview, PreviewRect } from './host.types'
+import type { AppHeroPreview, AppHost, AppPlayer, AppPreview, PreviewRect } from './host.types'
 import { isDash, isHls } from './state/playback'
 import { setExitPromptOpen } from './state/exit'
 
-export type { AppHost, AppPlayer, AppPreview, PreviewRect, SdfFont } from './host.types'
+export type { AppHeroPreview, AppHost, AppPlayer, AppPreview, PreviewRect, SdfFont } from './host.types'
 
 /** Samsung remote key codes (Tizen TV). */
 export const TV_KEYS = {
@@ -513,6 +513,66 @@ function tizenPreview(): AppPreview {
   }
 }
 
+// The hero banner's background video. Unlike the tile preview it sits BEHIND the canvas
+// (z-index 0; the canvas is z-index 1, see index.html), so the hero's gradients, title and
+// buttons, drawn in WebGL, stay on top of it; the hero fades its artwork out to reveal it.
+function tizenHeroPreview(): AppHeroPreview {
+  let video: HTMLVideoElement | undefined
+  let hls: { destroy(): void } | undefined
+  let generation = 0
+  const stop = () => {
+    generation++
+    hls?.destroy()
+    hls = undefined
+    if (video) {
+      console.log('HERO video stop')
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+      video.remove()
+      video = undefined
+    }
+  }
+  return {
+    start(url, onPlaying, onFailed) {
+      stop()
+      const current = generation
+      const element = document.createElement('video')
+      element.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:0;object-fit:cover;background:#0b0e17;pointer-events:none'
+      element.autoplay = true
+      element.playsInline = true
+      let reported = false
+      element.addEventListener('playing', () => {
+        if (reported || current !== generation) return
+        reported = true
+        console.log(`HERO video playing ${element.videoWidth}x${element.videoHeight}`)
+        onPlaying()
+      })
+      element.addEventListener('error', () => {
+        console.warn('HERO video error', element.error?.code)
+        if (current === generation) onFailed()
+      })
+      video = element
+      document.body.insertBefore(element, document.body.firstChild)
+      void import('hls.js').then(({ default: Hls }) => {
+        if (current !== generation) return
+        if (!Hls.isSupported()) {
+          element.src = url
+          return
+        }
+        const instance = new Hls({ maxBufferLength: 20 })
+        hls = instance
+        instance.on(Hls.Events.ERROR, (_event: unknown, data: { fatal?: boolean }) => {
+          if (data.fatal && current === generation) onFailed()
+        })
+        instance.loadSource(url)
+        instance.attachMedia(element)
+      })
+    },
+    stop,
+  }
+}
+
 export function tizenHost(): AppHost {
   const params = new URLSearchParams(window.location.search)
   registerKeys()
@@ -528,6 +588,7 @@ export function tizenHost(): AppHost {
     loadFonts: (_stage, fonts) => loadFonts(fonts.map((font) => ({ type: 'msdf', ...font }))),
     player: tizenPlayer(),
     preview: tizenPreview(),
+    heroPreview: tizenHeroPreview(),
     exit() {
       const app = tizenApi()?.application
       if (app) app.getCurrentApplication().exit()

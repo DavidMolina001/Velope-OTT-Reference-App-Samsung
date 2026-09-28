@@ -25,8 +25,10 @@ export interface Movie {
   year: string
   overview: string
   posterPath: string | null
-  /** Wide artwork (16:9), shown when a tile expands for its preview. */
+  /** Wide artwork (16:9): the hero banner's background. */
   backdropPath: string | null
+  /** TMDB's average vote out of 10 (0 when unrated). */
+  rating: number
 }
 
 interface GenreListResponse {
@@ -40,6 +42,7 @@ interface DiscoverResult {
   overview: string
   poster_path: string | null
   backdrop_path: string | null
+  vote_average?: number
 }
 
 interface DiscoverResponse {
@@ -166,6 +169,7 @@ function toMovie(result: DiscoverResult): Movie {
     overview: result.overview,
     posterPath: result.poster_path,
     backdropPath: result.backdrop_path,
+    rating: result.vote_average ?? 0,
   }
 }
 

@@ -4,10 +4,12 @@ import { HashRouter, KeepAliveRoute } from '@solidtv/solid/primitives/router'
 import Home from './pages/Home'
 import Details from './pages/Details'
 import ExitDialog from './components/ExitDialog'
-import { colors, layout } from './theme'
+import { layout } from './theme'
 
 const Root: Component<ParentProps> = (props) => (
-  <view width={layout.width} height={layout.height} color={colors.background}>
+  // No fill: the page background is the body's CSS colour, so the canvas can be see-through where
+  // the hero's preview video plays behind it (see index.html and host.ts).
+  <view width={layout.width} height={layout.height}>
     {props.children}
     <ExitDialog />
   </view>

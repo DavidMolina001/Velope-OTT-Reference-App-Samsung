@@ -2,9 +2,11 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Velope TV Reference (SolidTV)</title>
+    <title>Velope TV</title>
     <style>
       html, body { padding: 0; margin: 0; background-color: #0b0e17; overflow: hidden; }
+      /* The WebGL canvas sits above the hero video (z-index 0); its see-through areas reveal it. */
+      canvas { position: relative; z-index: 1; }
     </style>
   </head>
   <body>

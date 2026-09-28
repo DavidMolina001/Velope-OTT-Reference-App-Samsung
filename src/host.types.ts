@@ -27,6 +27,14 @@ export interface AppPreview {
   stop(): void
 }
 
+/** The hero banner's background video: full screen, BEHIND the canvas (see index.html). */
+export interface AppHeroPreview {
+  /** Plays `url` with sound; `onPlaying` fires once, when the first frame is on screen. */
+  start(url: string, onPlaying: () => void, onFailed: () => void): void
+  /** Stops and removes it. Safe to call when nothing plays. */
+  stop(): void
+}
+
 /** Full-screen playback of one stream, native to each runtime. */
 export interface AppPlayer {
   /** Whether this runtime can play the stream's container and DRM (decided before trying). */
@@ -64,6 +72,8 @@ export interface AppHost {
   player?: AppPlayer
   /** The tile preview player, when the runtime has one. */
   preview?: AppPreview
+  /** The hero banner's background video, when the runtime has one. */
+  heroPreview?: AppHeroPreview
   /** Closes the app (Back at the root of the app on the TV). */
   exit?(): void
 }
