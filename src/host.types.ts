@@ -11,6 +11,22 @@ export interface SdfFont {
   metrics?: { ascender: number; descender: number; lineGap: number; unitsPerEm: number }
 }
 
+/** A rectangle in app coordinates (the 1920x1080 scene). */
+export interface PreviewRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** A small inline video over the scene: the tile preview. */
+export interface AppPreview {
+  /** Plays `url` inside `rect`, with sound. Replaces any preview already playing. */
+  start(url: string, rect: PreviewRect): void
+  /** Stops and removes the preview. Safe to call when nothing plays. */
+  stop(): void
+}
+
 /** Full-screen playback of one stream, native to each runtime. */
 export interface AppPlayer {
   /** Whether this runtime can play the stream's container and DRM (decided before trying). */
@@ -46,6 +62,8 @@ export interface AppHost {
   onRenderer?(renderer: RendererMain): void
   /** The runtime's video player, when it has one. */
   player?: AppPlayer
+  /** The tile preview player, when the runtime has one. */
+  preview?: AppPreview
   /** Closes the app (Back at the root of the app on the TV). */
   exit?(): void
 }

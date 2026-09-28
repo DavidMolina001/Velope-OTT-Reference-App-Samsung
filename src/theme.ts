@@ -26,6 +26,10 @@ export const layout = {
   /** The middle of the 7 visible tiles: where focus stops walking and the row starts sliding. */
   focusSlot: 3,
   recycleBuffer: 2,
+  /** A tile expanded for its preview: about twice as wide (two tiles plus the gap between). */
+  expandedTileWidth: 460,
+  /** How long focus rests on a tile before it expands and plays its preview. */
+  previewDelay: 3000,
 } as const
 
 export const easing = 'cubic-bezier(0.25,0.1,0.25,1)'

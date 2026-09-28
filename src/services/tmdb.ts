@@ -25,6 +25,8 @@ export interface Movie {
   year: string
   overview: string
   posterPath: string | null
+  /** Wide artwork (16:9), shown when a tile expands for its preview. */
+  backdropPath: string | null
 }
 
 interface GenreListResponse {
@@ -37,6 +39,7 @@ interface DiscoverResult {
   release_date: string
   overview: string
   poster_path: string | null
+  backdrop_path: string | null
 }
 
 interface DiscoverResponse {
@@ -47,6 +50,7 @@ interface ImageConfigResponse {
   images: {
     secure_base_url: string
     poster_sizes: string[]
+    backdrop_sizes?: string[]
   }
 }
 
@@ -161,12 +165,14 @@ function toMovie(result: DiscoverResult): Movie {
     year: result.release_date ? result.release_date.slice(0, 4) : '—',
     overview: result.overview,
     posterPath: result.poster_path,
+    backdropPath: result.backdrop_path,
   }
 }
 
 let imageConfig = {
   baseUrl: 'https://image.tmdb.org/t/p/',
   posterSizes: ['w92', 'w154', 'w185', 'w342', 'w500', 'w780', 'original'],
+  backdropSizes: ['w300', 'w780', 'w1280', 'original'],
 }
 
 export function loadImageConfig(signal?: AbortSignal): Promise<void> {
@@ -174,6 +180,7 @@ export function loadImageConfig(signal?: AbortSignal): Promise<void> {
     imageConfig = {
       baseUrl: data.images.secure_base_url,
       posterSizes: data.images.poster_sizes,
+      backdropSizes: data.images.backdrop_sizes ?? imageConfig.backdropSizes,
     }
   })
 }
@@ -183,6 +190,12 @@ export function posterUrl(posterPath: string | null, displayWidth: number): stri
   if (!posterPath) return undefined
   const size = imageConfig.posterSizes.find((s) => Number(s.slice(1)) >= displayWidth) ?? 'original'
   return imageConfig.baseUrl + size + posterPath
+}
+
+export function backdropUrl(backdropPath: string | null, displayWidth: number): string | undefined {
+  if (!backdropPath) return undefined
+  const size = imageConfig.backdropSizes.find((s) => Number(s.slice(1)) >= displayWidth) ?? 'original'
+  return imageConfig.baseUrl + size + backdropPath
 }
 
 export function isAbortError(error: unknown): boolean {

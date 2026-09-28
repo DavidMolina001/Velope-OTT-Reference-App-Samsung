@@ -8,10 +8,10 @@
 //   play/pause state, progress bar, times) and its own remote handling while it is up;
 // - exit: Back at the root of the app closes it, as Samsung's app guidelines expect.
 import { loadFonts } from '@solidtv/solid'
-import type { AppHost, AppPlayer } from './host.types'
+import type { AppHost, AppPlayer, AppPreview, PreviewRect } from './host.types'
 import { isDash, isHls } from './state/playback'
 
-export type { AppHost, AppPlayer, SdfFont } from './host.types'
+export type { AppHost, AppPlayer, AppPreview, PreviewRect, SdfFont } from './host.types'
 
 /** Samsung remote key codes (Tizen TV). */
 export const TV_KEYS = {
@@ -373,6 +373,74 @@ function tizenPlayer(): AppPlayer {
   }
 }
 
+// The tile preview: a <video> placed exactly over the expanded tile (the canvas cannot draw a
+// video without copying every frame into a texture, too heavy for a TV). Quality is capped at
+// 480p, so a 460x330 preview never pulls the 1080p variant. It is
+// hidden until the first frame plays, so the tile's backdrop covers the loading time.
+function tizenPreview(): AppPreview {
+  let video: HTMLVideoElement | undefined
+  let hls: { destroy(): void } | undefined
+  let generation = 0
+  const stop = () => {
+    generation++
+    hls?.destroy()
+    hls = undefined
+    if (video) {
+      console.log('PREVIEW stop')
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+      video.remove()
+      video = undefined
+    }
+  }
+  const place = (element: HTMLVideoElement, rect: PreviewRect) => {
+    const ratio = window.innerWidth / 1920
+    element.style.left = `${rect.x * ratio}px`
+    element.style.top = `${rect.y * ratio}px`
+    element.style.width = `${rect.width * ratio}px`
+    element.style.height = `${rect.height * ratio}px`
+  }
+  return {
+    start(url, rect) {
+      stop()
+      const current = generation
+      const element = document.createElement('video')
+      element.style.cssText =
+        'position:fixed;z-index:5;object-fit:cover;border-radius:12px;background:transparent;opacity:0;transition:opacity .3s;pointer-events:none'
+      place(element, rect)
+      element.autoplay = true
+      element.playsInline = true
+      element.loop = true
+      element.addEventListener('playing', () => {
+        element.style.opacity = '1'
+        console.log(`PREVIEW playing ${element.videoWidth}x${element.videoHeight} at ${rect.x},${rect.y} ${rect.width}x${rect.height} muted=${element.muted}`)
+      })
+      element.addEventListener('error', () => console.warn('PREVIEW error', element.error?.code))
+      video = element
+      document.body.appendChild(element)
+      void import('hls.js').then(({ default: Hls }) => {
+        if (current !== generation) return
+        if (!Hls.isSupported()) {
+          element.src = url
+          return
+        }
+        const instance = new Hls({ maxBufferLength: 10 })
+        hls = instance
+        // Up to 480p: sharp in a 460x330 tile, and never the 1080p variant for a preview.
+        instance.on(Hls.Events.MANIFEST_PARSED, () => {
+          const cap = instance.levels.reduce((best, level, index) => (level.height <= 480 && level.height > (instance.levels[best]?.height ?? 0) ? index : best), 0)
+          instance.autoLevelCapping = cap
+        })
+        instance.loadSource(url)
+        instance.attachMedia(element)
+        console.log('PREVIEW start')
+      })
+    },
+    stop,
+  }
+}
+
 export function tizenHost(): AppHost {
   const params = new URLSearchParams(window.location.search)
   registerMediaKeys()
@@ -387,6 +455,7 @@ export function tizenHost(): AppHost {
     assetUrl: (path) => import.meta.env.BASE_URL + path,
     loadFonts: (_stage, fonts) => loadFonts(fonts.map((font) => ({ type: 'msdf', ...font }))),
     player: tizenPlayer(),
+    preview: tizenPreview(),
     exit() {
       const app = tizenApi()?.application
       if (app) app.getCurrentApplication().exit()

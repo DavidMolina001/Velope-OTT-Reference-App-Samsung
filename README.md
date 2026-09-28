@@ -76,6 +76,19 @@ screen with a message telling you exactly this.
 | OK | Enter | Open a title / choose a genre / press a button |
 | Back | Escape / Backspace | Grid → nav → exit the app; details → back to the grid with state intact |
 
+Browsing behaviour:
+
+- **Focus walks first.** Moving right, focus crosses the screen to the middle tile (the 4th of 7),
+  then stays there while the row slides and cycles forever. Moving left, focus walks back to the
+  left edge before the row slides back, down to the real first item (`stepColumn` in `Home.tsx`).
+- **Up / Down keep the column.** Focus lands on the tile directly above or below on screen; each
+  row keeps its own scroll (`moveToRow`).
+- **Preview.** Resting 3 s on a tile widens it to about twice its width (the wide TMDB backdrop
+  replaces the poster) and plays Big Buck Bunny over it, with sound, capped at 480p. In the middle
+  slot the tile grows to both sides and its neighbours move apart; elsewhere it grows to the right.
+  Any focus change, leaving the grid or opening the title stops it (`host.ts` `tizenPreview`,
+  `CarouselRow.tsx` `tileX`).
+
 In the player:
 
 | Samsung remote | Keyboard (dev) | Action |

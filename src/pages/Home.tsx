@@ -1,4 +1,4 @@
-import { createEffect, createMemo, For, on, onCleanup, onMount, Show, type Component } from 'solid-js'
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, type Component } from 'solid-js'
 import type { ElementNode, KeyHandler } from '@solidtv/solid'
 import { useNavigate } from '@solidjs/router'
 import { setSelectedMovie } from '../state/selection'
@@ -215,16 +215,31 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     e.preventDefault?.()
     return true
   }
+  // Up/Down land on the tile directly above/below on screen: the target row keeps its own
+  // scroll, and focus takes the same screen position the current row's focus had.
+  function moveToRow(target: number): void {
+    const from = state.rowIndex
+    if (target === from) return
+    const screenPos = (state.cols[from] ?? 0) - (state.scrolls[from] ?? 0)
+    const targetScroll = state.scrolls[target] ?? 0
+    const row = state.rows[target]
+    const count = row?.items.length ?? 0
+    const cycling = !!row?.exhausted && count > VISIBLE_TILES
+    let col = targetScroll + screenPos
+    if (count > 0 && !cycling) col = Math.min(col, count - 1)
+    setState('cols', target, col)
+    setState('rowIndex', target)
+  }
   const onUp: KeyHandler = (e) => {
     if (state.phase !== 'ready' || state.zone === 'nav') return handled(e)
     if (state.rowIndex === 0) setState('zone', 'nav')
-    else setState('rowIndex', state.rowIndex - 1)
+    else moveToRow(state.rowIndex - 1)
     return handled(e)
   }
   const onDown: KeyHandler = (e) => {
     if (state.phase !== 'ready') return handled(e)
     if (state.zone === 'nav') setState('zone', 'grid')
-    else setState('rowIndex', Math.min(state.rowIndex + 1, state.rows.length - 1))
+    else moveToRow(Math.min(state.rowIndex + 1, state.rows.length - 1))
     return handled(e)
   }
   const onLeft: KeyHandler = (e) => {
@@ -258,6 +273,23 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     resolveHost().exit?.()
     return handled(e)
   }
+
+  // Preview: once focus has rested on a tile for layout.previewDelay, that tile expands and plays
+  // its preview. Any focus change, leaving the grid or opening a title cancels it at once.
+  const [preview, setPreview] = createSignal<{ row: number; col: number } | null>(null)
+  createEffect(() => {
+    const alive = props.isAlive?.() ?? true
+    const rowIndex = state.rowIndex
+    const col = state.cols[rowIndex] ?? 0
+    const ready = alive && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
+    setPreview(null)
+    if (!ready) return
+    const timer = setTimeout(() => {
+      console.log(`PREVIEW expand row=${rowIndex} col=${col}`)
+      setPreview({ row: rowIndex, col })
+    }, layout.previewDelay)
+    onCleanup(() => clearTimeout(timer))
+  })
 
   exposeDebug('home', { state, setState })
   // Dev builds, and builds with remote logging (VITE_LOG_URL), log every focus-model change so
@@ -296,6 +328,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
                 focusedCol={state.cols[row.index] ?? 0}
                 scrollCol={state.scrolls[row.index] ?? 0}
                 rowFocused={state.zone === 'grid' && row.index === state.rowIndex}
+                expandedCol={preview()?.row === row.index ? preview()!.col : null}
               />
             )}
           </For>
