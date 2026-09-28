@@ -89,9 +89,12 @@ function createControls(title: string) {
   const ref = (name: string) => root.querySelector(`[data-r="${name}"]`) as HTMLElement
   ref('title').textContent = title
   let hideTimer: ReturnType<typeof setTimeout> | undefined
+  let visible = true
   return {
     root,
     update(video: HTMLVideoElement, buffering: boolean) {
+      // No DOM work while the controls are hidden: every layout/paint competes with the decoder.
+      if (!visible) return
       const duration = video.duration
       const live = !Number.isFinite(duration)
       ref('state').textContent = video.paused ? '▶' : '❚❚'
@@ -108,10 +111,23 @@ function createControls(title: string) {
       }, 700)
     },
     show(video: HTMLVideoElement) {
-      root.style.opacity = '1'
       clearTimeout(hideTimer)
-      // Stay up while paused; fade out a few seconds after the last key while playing.
-      if (!video.paused) hideTimer = setTimeout(() => (root.style.opacity = '0'), CONTROLS_TIMEOUT)
+      if (!visible) {
+        visible = true
+        root.style.display = ''
+        this.update(video, false)
+      }
+      root.style.opacity = '1'
+      // Stay up while paused; fade out a few seconds after the last key while playing, then
+      // leave the layout entirely (display:none) so nothing is composited over the video.
+      if (!video.paused)
+        hideTimer = setTimeout(() => {
+          root.style.opacity = '0'
+          hideTimer = setTimeout(() => {
+            visible = false
+            root.style.display = 'none'
+          }, 400)
+        }, CONTROLS_TIMEOUT)
     },
     destroy() {
       clearTimeout(hideTimer)
@@ -120,8 +136,8 @@ function createControls(title: string) {
   }
 }
 
-// DASH (Widevine/PlayReady through EME) plays through Shaka Player; HLS plays natively on the
-// TV (Tizen's AVPlay-backed <video> reads it) and through hls.js elsewhere.
+// DASH (Widevine/PlayReady through EME) plays through Shaka Player; HLS plays through hls.js
+// (Media Source Extensions), which does proper adaptive bitrate on the TV.
 function tizenPlayer(): AppPlayer {
   let video: HTMLVideoElement | undefined
   let hls: { destroy(): void } | undefined
@@ -236,10 +252,15 @@ function tizenPlayer(): AppPlayer {
       element.addEventListener('playing', onPlaying)
       element.addEventListener('pause', onPause)
       element.addEventListener('ended', close)
+      // The WebGL canvas under the video is hidden while it plays: compositing a full-screen GL
+      // layer beneath the video every frame starved the TV's decoder (audio stuttered).
+      const canvases = Array.from(document.querySelectorAll('canvas'))
+      canvases.forEach((canvas) => (canvas.style.visibility = 'hidden'))
       teardown = () => {
         window.removeEventListener('keydown', onKey, true)
         window.removeEventListener('keyup', onKey, true)
         controls.destroy()
+        canvases.forEach((canvas) => (canvas.style.visibility = ''))
       }
       video = element
       document.body.appendChild(element)
@@ -248,6 +269,20 @@ function tizenPlayer(): AppPlayer {
 
       const candidates = streams.filter((stream) => this.canPlay(stream))
       console.log(`PLAYER candidates ${candidates.map((c) => c.label).join(' | ')} UA ${navigator.userAgent}`)
+      // Remote-logging builds sample playback every 2 s: media time vs wall time, dropped frames.
+      if (import.meta.env.VITE_LOG_URL) {
+        let lastT = 0
+        let lastWall = performance.now()
+        const probe = setInterval(() => {
+          if (video !== element) return clearInterval(probe)
+          const now = performance.now()
+          const q = element.getVideoPlaybackQuality?.()
+          const end = element.buffered.length ? element.buffered.end(element.buffered.length - 1) : 0
+          console.log(`PROGRESS t=${element.currentTime.toFixed(2)} dt=${(element.currentTime - lastT).toFixed(2)} wall=${((now - lastWall) / 1000).toFixed(2)} paused=${element.paused} buf=${(end - element.currentTime).toFixed(1)} frames=${q?.totalVideoFrames ?? '?'} dropped=${q?.droppedVideoFrames ?? '?'} ${element.videoWidth}x${element.videoHeight}`)
+          lastT = element.currentTime
+          lastWall = now
+        }, 2000)
+      }
       for (const name of ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled', 'pause', 'error', 'emptied']) {
         element.addEventListener(name, () => console.log(`VIDEO ${name} t=${element.currentTime.toFixed(1)} rs=${element.readyState} ns=${element.networkState} err=${element.error?.code ?? ''}`))
       }
@@ -288,7 +323,9 @@ function tizenPlayer(): AppPlayer {
             await player.attach(element)
             if (stream.drm) player.configure({ drm: { servers: stream.drm } })
             await player.load(stream.url)
-          } else if (isHls(stream.url) && !element.canPlayType('application/vnd.apple.mpegurl')) {
+          } else if (isHls(stream.url)) {
+            // Always hls.js (MSE) on the TV: Tizen's native HLS stayed on the lowest variant
+            // (320x184, with choppy audio) and never switched up.
             const { default: Hls } = await import('hls.js')
             if (video !== element) return
             if (!Hls.isSupported()) throw new Error('hls.js not supported here')

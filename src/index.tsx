@@ -27,6 +27,7 @@ if (logUrl) {
       }
     }
   }
+  window.addEventListener('keydown', (e) => console.log(`KEY ${e.keyCode} ${e.key}`), true)
   window.addEventListener('error', (e) => console.error('UNCAUGHT', e.message, e.filename, e.lineno))
   window.addEventListener('unhandledrejection', (e) => console.error('UNHANDLED', String(e.reason)))
 }

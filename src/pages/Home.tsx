@@ -244,13 +244,13 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
   }
 
   exposeDebug('home', { state, setState })
-  // Dev builds log every focus-model change so the tvOS simulator's console can be checked
-  // the way DevTools is used on the web.
-  if (import.meta.env.DEV) {
+  // Dev builds, and builds with remote logging (VITE_LOG_URL), log every focus-model change so
+  // the TV's behaviour can be checked from the log.
+  if (import.meta.env.DEV || import.meta.env.VITE_LOG_URL) {
     createEffect(() => {
       const row = state.rows[state.rowIndex]
       console.log(
-        `FOCUS zone=${state.zone} nav=${state.navIndex} row=${state.rowIndex} col=${state.cols[state.rowIndex] ?? 0} items=${row?.items.length ?? 0}${row?.exhausted ? ' exhausted' : ''} nodes=${globalThis.__velope?.countNodes() ?? -1}`
+        `FOCUS zone=${state.zone} nav=${state.navIndex} row=${state.rowIndex} col=${state.cols[state.rowIndex] ?? 0} items=${row?.items.length ?? 0}${row?.exhausted ? ' exhausted' : ''} phase=${state.phase} title=${row?.items.length ? row.items[(state.cols[state.rowIndex] ?? 0) % row.items.length]?.title : ''} nodes=${globalThis.__velope?.countNodes() ?? -1}`
       )
     })
   }

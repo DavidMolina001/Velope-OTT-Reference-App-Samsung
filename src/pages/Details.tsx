@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount, type Component } from 'solid-js'
+import { createEffect, createSignal, onCleanup, onMount, type Component } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
 import type { KeyHandler } from '@solidtv/solid'
 import ActionButton from '../components/ActionButton'
@@ -43,6 +43,9 @@ const Details: Component = () => {
   })
 
   const title = () => movie?.title ?? ''
+  if (import.meta.env.DEV || import.meta.env.VITE_LOG_URL) {
+    createEffect(() => console.log(`DETAILS title=${title()} button=${buttonIndex()} favourited=${favourited()} playing=${playing()}`))
+  }
   const year = () => movie?.year ?? ''
   const overview = () => movie?.overview || 'No description available.'
   const monogram = () => (movie?.title ?? '?').charAt(0).toUpperCase()

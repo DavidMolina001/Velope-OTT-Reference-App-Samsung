@@ -88,10 +88,21 @@ In the player:
 
 ### What plays
 
-"Play now" plays **Big Buck Bunny** (clear HLS, Mux test streams; Blender Foundation, CC BY 3.0),
-played natively by the TV. The Widevine stream from the SolidTV app stays in
+"Play now" plays **Big Buck Bunny** (clear HLS, Mux test streams; Blender Foundation, CC BY 3.0)
+through hls.js. The TV's native HLS player stayed on the lowest variant (320×184, choppy audio);
+hls.js reaches 1080p within seconds. The Widevine stream from the SolidTV app stays in
 `src/state/playback.ts` for reference but is not played: the DRMtoday staging licence server
 refuses the TV's requests (Shaka error 6007).
+
+## Testing on the TV
+
+- **Remote logging.** Build with `VITE_LOG_URL=http://<this Mac's IP>:9999 pnpm tizen` and run any
+  HTTP listener on that port: the app POSTs every console line, key press (`KEY`), focus change
+  (`FOCUS`), details state (`DETAILS`), video event (`VIDEO`) and a playback probe every 2 s
+  (`PROGRESS`: media vs wall time, buffer, resolution). Without the variable none of it is built in.
+- **Driving the remote.** Samsung TVs accept remote keys over `wss://<TV>:8002/api/v2/channels/samsung.remote.control`
+  (`ms.remote.control`, e.g. `KEY_UP`, `KEY_ENTER`, `KEY_RETURN`, `KEY_PLAY`, `KEY_PAUSE`,
+  `KEY_PLAY_BACK`, `KEY_FF`, `KEY_REWIND`, `KEY_STOP`), which is how the build was tested end to end.
 
 ## Resolution and diagnostics
 
