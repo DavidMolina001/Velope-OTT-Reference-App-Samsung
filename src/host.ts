@@ -71,6 +71,7 @@ function registerKeys(): void {
 const SEEK_STEP = 10
 const FAST_SEEK_STEP = 30
 const CONTROLS_TIMEOUT = 4000
+const SEEK_BADGE_TIMEOUT = 1000
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -79,6 +80,46 @@ function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const mm = h ? String(m).padStart(2, '0') : String(m)
   return `${h ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`
+}
+
+/**
+ * The seek badge: a large centre badge (Netflix style) showing the direction and the total seek,
+ * e.g. "+30s". Presses in the same direction within SEEK_BADGE_TIMEOUT add up (+30s, +60s...);
+ * changing direction starts again. It is independent of the controls, so it shows even while
+ * they are fading out.
+ */
+function createSeekBadge() {
+  const root = document.createElement('div')
+  root.style.cssText =
+    'position:fixed;left:50%;top:44%;z-index:12;transform:translate(-50%,-50%) scale(.9);width:240px;height:240px;border-radius:50%;' +
+    'background:rgba(11,14,23,.72);color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+    'opacity:0;transition:opacity .2s,transform .2s;pointer-events:none'
+  root.innerHTML = '<div data-r="icon" style="font-size:88px;line-height:1;color:#8b6cff"></div><div data-r="amount" style="font-size:44px;font-weight:bold;margin-top:8px"></div>'
+  const icon = root.querySelector('[data-r="icon"]') as HTMLElement
+  const amount = root.querySelector('[data-r="amount"]') as HTMLElement
+  let total = 0
+  let hideTimer: ReturnType<typeof setTimeout> | undefined
+  return {
+    root,
+    show(delta: number) {
+      clearTimeout(hideTimer)
+      // Same direction while the badge is up: accumulate; otherwise start from this press.
+      total = root.style.opacity === '1' && Math.sign(total) === Math.sign(delta) ? total + delta : delta
+      icon.textContent = total > 0 ? '⏩' : '⏪'
+      amount.textContent = `${total > 0 ? '+' : '−'}${Math.abs(total)}s`
+      root.style.opacity = '1'
+      root.style.transform = 'translate(-50%,-50%) scale(1)'
+      if (import.meta.env.VITE_LOG_URL) console.log(`SEEKBADGE ${amount.textContent} ${icon.textContent}`)
+      hideTimer = setTimeout(() => {
+        root.style.opacity = '0'
+        root.style.transform = 'translate(-50%,-50%) scale(.9)'
+      }, SEEK_BADGE_TIMEOUT)
+    },
+    destroy() {
+      clearTimeout(hideTimer)
+      root.remove()
+    },
+  }
 }
 
 /** The on-screen controls, plain DOM over the video (the canvas is underneath both). */
@@ -117,13 +158,6 @@ function createControls(title: string) {
       ref('duration').textContent = live ? 'LIVE' : formatTime(duration)
       ref('bar').style.width = live || !duration ? '0' : `${(video.currentTime / duration) * 100}%`
       ref('status').textContent = buffering ? '…' : ''
-    },
-    flash(text: string) {
-      const status = ref('status')
-      status.textContent = text
-      setTimeout(() => {
-        if (status.textContent === text) status.textContent = ''
-      }, 700)
     },
     show(video: HTMLVideoElement) {
       clearTimeout(hideTimer)
@@ -187,6 +221,7 @@ function tizenPlayer(): AppPlayer {
       element.autoplay = true
       element.playsInline = true
       const controls = createControls(title)
+      const seekBadge = createSeekBadge()
       let buffering = true
       let closed = false
       const close = () => {
@@ -199,7 +234,7 @@ function tizenPlayer(): AppPlayer {
       const seek = (delta: number) => {
         if (!Number.isFinite(element.duration)) return
         element.currentTime = Math.max(0, Math.min(element.duration - 1, element.currentTime + delta))
-        controls.flash(delta > 0 ? `+${delta}s` : `${delta}s`)
+        seekBadge.show(delta)
       }
       const toggle = () => {
         if (element.paused) void element.play().catch(() => undefined)
@@ -279,11 +314,13 @@ function tizenPlayer(): AppPlayer {
         window.removeEventListener('keydown', onKey, true)
         window.removeEventListener('keyup', onKey, true)
         controls.destroy()
+        seekBadge.destroy()
         canvases.forEach((canvas) => (canvas.style.visibility = ''))
       }
       video = element
       document.body.appendChild(element)
       document.body.appendChild(controls.root)
+      document.body.appendChild(seekBadge.root)
       refresh()
 
       const candidates = streams.filter((stream) => this.canPlay(stream))
@@ -395,9 +432,10 @@ function tizenPlayer(): AppPlayer {
 // The tile preview: a <video> placed exactly over the expanded tile (the canvas cannot draw a
 // video without copying every frame into a texture, too heavy for a TV). Quality is capped at
 // 480p, so a 460x330 preview never pulls the 1080p variant. It is
-// hidden until the first frame plays, so the tile's backdrop covers the loading time.
+// hidden until the first frame plays; the expanded tile is black until then.
 function tizenPreview(): AppPreview {
   let video: HTMLVideoElement | undefined
+  let frame: HTMLDivElement | undefined
   let hls: { destroy(): void } | undefined
   let generation = 0
   const stop = () => {
@@ -409,11 +447,12 @@ function tizenPreview(): AppPreview {
       video.pause()
       video.removeAttribute('src')
       video.load()
-      video.remove()
       video = undefined
     }
+    frame?.remove()
+    frame = undefined
   }
-  const place = (element: HTMLVideoElement, rect: PreviewRect) => {
+  const place = (element: HTMLElement, rect: PreviewRect) => {
     const ratio = window.innerWidth / 1920
     element.style.left = `${rect.x * ratio}px`
     element.style.top = `${rect.y * ratio}px`
@@ -424,20 +463,34 @@ function tizenPreview(): AppPreview {
     start(url, rect) {
       stop()
       const current = generation
+      // The frame clips the video to the tile's rounded corners and carries the progress bar
+      // along its bottom edge (where the preview is in the whole video, like YouTube's hover
+      // previews). It stays invisible until the first frame plays: the tile underneath is black.
+      const box = document.createElement('div')
+      box.style.cssText =
+        'position:fixed;z-index:5;border-radius:12px;overflow:hidden;background:#000;opacity:0;transition:opacity .3s;pointer-events:none'
+      place(box, rect)
+      box.innerHTML =
+        '<div style="position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(255,255,255,.25)"><div data-r="fill" style="height:100%;width:0;background:#8b6cff"></div></div>'
+      const fill = box.querySelector('[data-r="fill"]') as HTMLElement
       const element = document.createElement('video')
-      element.style.cssText =
-        'position:fixed;z-index:5;object-fit:cover;border-radius:12px;background:transparent;opacity:0;transition:opacity .3s;pointer-events:none'
-      place(element, rect)
+      element.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover'
       element.autoplay = true
       element.playsInline = true
       element.loop = true
       element.addEventListener('playing', () => {
-        element.style.opacity = '1'
+        box.style.opacity = '1'
         console.log(`PREVIEW playing ${element.videoWidth}x${element.videoHeight} at ${rect.x},${rect.y} ${rect.width}x${rect.height} muted=${element.muted}`)
       })
+      element.addEventListener('timeupdate', () => {
+        if (Number.isFinite(element.duration) && element.duration > 0) fill.style.width = `${(element.currentTime / element.duration) * 100}%`
+        if (import.meta.env.VITE_LOG_URL && Math.floor(element.currentTime) % 3 === 0) console.log(`PREVIEWBAR t=${element.currentTime.toFixed(1)} fill=${fill.style.width}`)
+      })
       element.addEventListener('error', () => console.warn('PREVIEW error', element.error?.code))
+      box.insertBefore(element, box.firstChild)
       video = element
-      document.body.appendChild(element)
+      frame = box
+      document.body.appendChild(box)
       void import('hls.js').then(({ default: Hls }) => {
         if (current !== generation) return
         if (!Hls.isSupported()) {

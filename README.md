@@ -94,8 +94,9 @@ Browsing behaviour:
   left edge before the row slides back, down to the real first item (`stepColumn` in `Home.tsx`).
 - **Up / Down keep the column.** Focus lands on the tile directly above or below on screen; each
   row keeps its own scroll (`moveToRow`).
-- **Preview.** Resting 3 s on a tile widens it to about twice its width (the wide TMDB backdrop
-  replaces the poster) and plays Big Buck Bunny over it, with sound, capped at 480p. In the middle
+- **Preview.** Resting 3 s on a tile widens it to about twice its width (black until the video
+  starts) and plays Big Buck Bunny over it with a progress bar along the bottom (where it is in the
+  whole video), with sound, capped at 480p. In the middle
   slot the tile grows to both sides and its neighbours move apart; elsewhere it grows to the right.
   Any focus change, leaving the grid or opening the title stops it (`host.ts` `tizenPreview`,
   `CarouselRow.tsx` `tileX`).
@@ -106,7 +107,7 @@ In the player:
 | --- | --- | --- |
 | OK or Play/Pause | Enter | Play / pause (controls stay up while paused) |
 | Play, Pause | | Play, pause |
-| Left / Right | Arrow Left / Right | Seek 10 s |
+| Left / Right | Arrow Left / Right | Seek 10 s (centre badge shows the total, e.g. +20s; repeat presses add up) |
 | Rewind / Fast-forward | | Seek 30 s |
 | Back or Stop | Escape / Backspace | Close the player |
 
