@@ -19,7 +19,6 @@ pnpm build
 rm -rf tizen-build
 cp -R dist tizen-build
 cp tizen/config.xml tizen/icon.png tizen-build/
-cp -R tizen/splash tizen-build/splash
 "$TIZEN" package -t wgt -s "$TIZEN_PROFILE" -- "$PWD/tizen-build"
 mv tizen-build/*.wgt tizen-build/VelopeTV.wgt 2>/dev/null || true
 echo "Packaged tizen-build/VelopeTV.wgt"

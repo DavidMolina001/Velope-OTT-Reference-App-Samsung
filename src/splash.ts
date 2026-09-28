@@ -34,7 +34,7 @@ const HTML = `
 <div class="ring"></div>
 <div class="word"><span>D</span><span>M</span><span>P</span></div>
 <div class="bar"></div>
-<div class="tag">A DAVID MOLINA PRODUCTION</div>
+<div class="tag">A MER-WE-BO DEVIS PRODUCTION</div>
 <div class="dots"><i></i><i></i><i></i></div>`
 
 type Ctx = AudioContext
@@ -120,15 +120,6 @@ export function showSplash(): Splash {
   document.head.appendChild(style)
   document.body.appendChild(root)
   console.log('SPLASH shown')
-  // Samsung's video splash screen (tizen/config.xml, ready_when="custom") stays up until the app
-  // says so: hand over on the first painted frame, which is this overlay's opening state.
-  requestAnimationFrame(() => {
-    const screen = window.screen as Screen & { show?: () => void }
-    if (typeof screen.show === 'function') {
-      screen.show()
-      console.log('SPLASH system splash dismissed')
-    }
-  })
   chime()
   let done = false
   return {
