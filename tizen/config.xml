@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="https://velope.tv/reference-app-samsung" version="1.0.0" viewmodes="maximized">
+<widget xmlns:tizen="http://tizen.org/ns/widgets" xmlns="http://www.w3.org/ns/widgets" id="https://velope.tv/reference-app-samsung" version="1.0.1" viewmodes="maximized">
     <access origin="*" subdomains="true"></access>
     <tizen:application id="VelSamsung.VelopeTV" package="VelSamsung" required_version="6.0"/>
     <content src="index.html"/>
@@ -12,5 +12,10 @@
     <tizen:privilege name="http://developer.samsung.com/privilege/drmplay"/>
     <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
     <tizen:profile name="tv-samsung"/>
+    <!-- Samsung's Video Splash Screen replaces the system loading dots: a 1 s clip of the static
+         DMP frame, then the still until the app calls window.screen.show() (splash.ts). -->
+    <tizen:video_splash_screen ready_when="custom">
+        <tizen:vss_default video="splash/dmp_splash.mp4" background_image="splash/dmp_bg.png" background_color="#0b0e17" image="splash/dmp_logo.png" image_border="0px stretch"/>
+    </tizen:video_splash_screen>
     <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>

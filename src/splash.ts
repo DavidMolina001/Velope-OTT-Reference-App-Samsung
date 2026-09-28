@@ -120,6 +120,15 @@ export function showSplash(): Splash {
   document.head.appendChild(style)
   document.body.appendChild(root)
   console.log('SPLASH shown')
+  // Samsung's video splash screen (tizen/config.xml, ready_when="custom") stays up until the app
+  // says so: hand over on the first painted frame, which is this overlay's opening state.
+  requestAnimationFrame(() => {
+    const screen = window.screen as Screen & { show?: () => void }
+    if (typeof screen.show === 'function') {
+      screen.show()
+      console.log('SPLASH system splash dismissed')
+    }
+  })
   chime()
   let done = false
   return {

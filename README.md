@@ -24,6 +24,12 @@ unchanged apart from two small hooks:
   the DMP monogram drops in over a pulsing ring, then the bar and "A DAVID MOLINA PRODUCTION".
   Its chime is synthesised with Web Audio (a tick, C5-E5-G5 as the letters land, a C6/G6 shimmer),
   so no audio file ships. It stays at least 2.8 s and fades once the app is ready.
+- **System loader replaced.** Samsung shows its own loading dots between launch and the app's
+  first frame; `tizen/config.xml` declares Samsung's *Video Splash Screen* instead
+  (`<tizen:video_splash_screen ready_when="custom">`): a 1 s H.264 clip of the static DMP frame
+  plus the same frame as a still (`tizen/splash/`, made by a scratch Swift script from the bundled
+  Raleway). The app hands over with `window.screen.show()` on the splash overlay's first frame.
+  The generic Tizen `<tizen:launch_screen>` is not in the TV schema and fails packaging.
 - **Icon.** `tizen/icon.png` is the DMP wordmark (512 px, rendered from the app's Raleway).
 - **Packaging.** Vite builds with relative asset URLs (`base: './'`) because the packaged app loads
   from the TV's filesystem. `tizen/config.xml` declares the app (id `VelSamsung.VelopeTV`) and its
