@@ -8,6 +8,8 @@ interface Props {
   row: Row
   y: number
   focusedCol: number
+  /** First slot on screen (Home owns it: focus walks first, then the row slides). */
+  scrollCol: number
   rowFocused: boolean
 }
 
@@ -34,7 +36,7 @@ const CarouselRow: Component<Props> = (props) => {
       return { items: [] as RowItem[], scrollCol: 0 }
     }
     const cycling = props.row.exhausted && count > VISIBLE_TILES
-    const scrollCol = cycling ? props.focusedCol : Math.min(props.focusedCol, Math.max(0, count - VISIBLE_TILES))
+    const scrollCol = cycling ? props.scrollCol : Math.min(props.scrollCol, Math.max(0, count - VISIBLE_TILES))
     const from = Math.max(0, scrollCol - RECYCLE_BUFFER)
     const to = cycling ? scrollCol + VISIBLE_TILES + RECYCLE_BUFFER : Math.min(scrollCol + VISIBLE_TILES + RECYCLE_BUFFER, count)
     for (const slot of [...slotItems.keys()]) if (slot < from || slot >= to) slotItems.delete(slot)

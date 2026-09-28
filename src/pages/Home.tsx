@@ -17,7 +17,7 @@ const NAV_GENRE_COUNT = 4
 const ROW_PREFETCH_AHEAD = 3
 const ROW_PREFETCH_BEHIND = 1
 const EXTEND_WHEN_TILES_LEFT = 12
-const { rowStep: ROW_STEP, visibleTiles: VISIBLE_TILES } = layout
+const { rowStep: ROW_STEP, visibleTiles: VISIBLE_TILES, focusSlot: FOCUS_SLOT } = layout
 
 type Phase = 'loading' | 'ready' | 'error'
 type Zone = 'nav' | 'grid'
@@ -34,6 +34,8 @@ interface HomeState {
   rows: Row[]
   rowIndex: number
   cols: number[]
+  /** Per row: the first slot on screen. Focus walks inside the screen; see stepColumn. */
+  scrolls: number[]
 }
 
 const gridTransition = { y: { duration: 250, easing } } as const
@@ -55,6 +57,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     rows: [],
     rowIndex: 0,
     cols: [],
+    scrolls: [],
   })
 
   const activeGenreId = () => state.genres[state.activeGenreIndex]?.id ?? null
@@ -85,7 +88,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     inflight.abort()
     inflight = new AbortController()
     const rows = buildRows(activeGenreId())
-    setState({ rows, cols: rows.map(() => 0), rowIndex: 0 })
+    setState({ rows, cols: rows.map(() => 0), scrolls: rows.map(() => 0), rowIndex: 0 })
   }
 
   function loadRowsAround(index: number): void {
@@ -116,20 +119,33 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     setState('rows', index, patch)
   }
 
-  // Rows grow to the right by fetching further pages; once TMDB is exhausted they cycle
-  // seamlessly. The left end is fixed, and rows shorter than the viewport simply clamp.
+  // Focus walks first: moving right, focus crosses the screen until it reaches the middle slot
+  // (FOCUS_SLOT), then stays there and the row slides under it, cycling forever once exhausted.
+  // Moving left, focus walks back across the screen and the row only slides back once focus
+  // reaches the left edge, down to the real first item. Rows shorter than the viewport clamp.
   function stepColumn(direction: number): void {
-    const row = state.rows[state.rowIndex]
+    const index = state.rowIndex
+    const row = state.rows[index]
     if (!row || row.items.length === 0) return
-    const col = state.cols[state.rowIndex] ?? 0
+    const col = state.cols[index] ?? 0
+    const scroll = state.scrolls[index] ?? 0
     if (direction < 0) {
-      setState('cols', state.rowIndex, Math.max(0, col - 1))
+      const next = Math.max(0, col - 1)
+      setState('cols', index, next)
+      if (next < scroll) setState('scrolls', index, next)
       return
     }
     const count = row.items.length
     const cycling = row.exhausted && count > VISIBLE_TILES
-    if (col + 1 < count || cycling) setState('cols', state.rowIndex, col + 1)
-    if (!row.exhausted && count - col <= EXTEND_WHEN_TILES_LEFT) void extendRow(state.rowIndex)
+    if (col + 1 < count || cycling) {
+      const next = col + 1
+      setState('cols', index, next)
+      if (next - scroll > FOCUS_SLOT) {
+        const maxScroll = cycling ? Infinity : Math.max(0, count - VISIBLE_TILES)
+        setState('scrolls', index, Math.min(next - FOCUS_SLOT, maxScroll))
+      }
+    }
+    if (!row.exhausted && count - col <= EXTEND_WHEN_TILES_LEFT) void extendRow(index)
   }
 
   async function extendRow(index: number): Promise<void> {
@@ -250,7 +266,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     createEffect(() => {
       const row = state.rows[state.rowIndex]
       console.log(
-        `FOCUS zone=${state.zone} nav=${state.navIndex} row=${state.rowIndex} col=${state.cols[state.rowIndex] ?? 0} items=${row?.items.length ?? 0}${row?.exhausted ? ' exhausted' : ''} phase=${state.phase} title=${row?.items.length ? row.items[(state.cols[state.rowIndex] ?? 0) % row.items.length]?.title : ''} nodes=${globalThis.__velope?.countNodes() ?? -1}`
+        `FOCUS zone=${state.zone} nav=${state.navIndex} row=${state.rowIndex} col=${state.cols[state.rowIndex] ?? 0} scroll=${state.scrolls[state.rowIndex] ?? 0} items=${row?.items.length ?? 0}${row?.exhausted ? ' exhausted' : ''} phase=${state.phase} title=${row?.items.length ? row.items[(state.cols[state.rowIndex] ?? 0) % row.items.length]?.title : ''} nodes=${globalThis.__velope?.countNodes() ?? -1}`
       )
     })
   }
@@ -278,6 +294,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
                 row={row}
                 y={row.index * ROW_STEP}
                 focusedCol={state.cols[row.index] ?? 0}
+                scrollCol={state.scrolls[row.index] ?? 0}
                 rowFocused={state.zone === 'grid' && row.index === state.rowIndex}
               />
             )}

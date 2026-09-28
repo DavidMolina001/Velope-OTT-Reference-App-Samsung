@@ -23,6 +23,8 @@ export const layout = {
   tileWidth: 220,
   tileHeight: 330,
   visibleTiles: 7,
+  /** The middle of the 7 visible tiles: where focus stops walking and the row starts sliding. */
+  focusSlot: 3,
   recycleBuffer: 2,
 } as const
 
