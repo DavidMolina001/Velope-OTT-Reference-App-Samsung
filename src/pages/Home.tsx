@@ -5,13 +5,13 @@ import { setSelectedMovie } from '../state/selection'
 import { createStore } from 'solid-js/store'
 import GenreNav, { type NavGenre } from '../components/GenreNav'
 import CarouselRow from '../components/CarouselRow'
-import SplashScreen from '../components/SplashScreen'
 import ErrorScreen from '../components/ErrorScreen'
 import { getGenres, loadImageConfig, isAbortError } from '../services/tmdb'
 import { buildRows, fetchRowItems, fetchRowPage, extendRowItems, MAX_DISCOVER_PAGE, type Row } from '../services/rows'
 import { colors, easing, layout } from '../theme'
 import { exposeDebug } from '../debug'
 import { exitPromptOpen, setExitPromptOpen } from '../state/exit'
+import { splash } from '../state/boot'
 
 const NAV_GENRE_COUNT = 4
 const ROW_PREFETCH_AHEAD = 3
@@ -291,6 +291,11 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     onCleanup(() => clearTimeout(timer))
   })
 
+  // The boot splash (DOM, see splash.ts) covers the app until there is something to show.
+  createEffect(() => {
+    if (state.phase === 'ready' || state.phase === 'error') splash?.ready()
+  })
+
   exposeDebug('home', { state, setState })
   // Dev builds, and builds with remote logging (VITE_LOG_URL), log every focus-model change so
   // the TV's behaviour can be checked from the log.
@@ -335,9 +340,6 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
         </view>
       </view>
       <GenreNav genres={state.genres} focusedIndex={state.navIndex} activeIndex={state.activeGenreIndex} navFocused={state.zone === 'nav'} />
-      <Show when={state.phase === 'loading'}>
-        <SplashScreen active={state.phase === 'loading'} />
-      </Show>
       <Show when={state.phase === 'error'}>
         <ErrorScreen message={state.errorMessage} />
       </Show>

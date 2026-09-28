@@ -8,6 +8,8 @@ import { describeRuntime } from './services/tmdb'
 import { colors, layout } from './theme'
 import App from './App'
 import { installDebug } from './debug'
+import { showSplash } from './splash'
+import { setSplash } from './state/boot'
 
 // The TV has no console we can read: with VITE_LOG_URL set at build time (e.g. in .env.local),
 // console.log/warn/error are also POSTed there, one line per call.
@@ -31,6 +33,9 @@ if (logUrl) {
   window.addEventListener('error', (e) => console.error('UNCAUGHT', e.message, e.filename, e.lineno))
   window.addEventListener('unhandledrejection', (e) => console.error('UNHANDLED', String(e.reason)))
 }
+
+// First thing on screen, before the renderer and fonts load.
+setSplash(showSplash())
 
 const host = resolveHost()
 console.log(`RUNTIME ${host.platform} ${describeRuntime()}`)
