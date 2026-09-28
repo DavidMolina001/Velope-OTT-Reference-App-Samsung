@@ -11,7 +11,7 @@ import { getGenres, loadImageConfig, isAbortError } from '../services/tmdb'
 import { buildRows, fetchRowItems, fetchRowPage, extendRowItems, MAX_DISCOVER_PAGE, type Row } from '../services/rows'
 import { colors, easing, layout } from '../theme'
 import { exposeDebug } from '../debug'
-import { resolveHost } from '../host'
+import { exitPromptOpen, setExitPromptOpen } from '../state/exit'
 
 const NAV_GENRE_COUNT = 4
 const ROW_PREFETCH_AHEAD = 3
@@ -269,8 +269,8 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
       setState('zone', 'nav')
       return handled(e)
     }
-    // Nothing to walk back to: Back at the root of the app closes it (Samsung guideline).
-    resolveHost().exit?.()
+    // Nothing to walk back to: Back at the root of the app asks whether to exit.
+    setExitPromptOpen(true)
     return handled(e)
   }
 
@@ -281,7 +281,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     const alive = props.isAlive?.() ?? true
     const rowIndex = state.rowIndex
     const col = state.cols[rowIndex] ?? 0
-    const ready = alive && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
+    const ready = alive && !exitPromptOpen() && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
     setPreview(null)
     if (!ready) return
     const timer = setTimeout(() => {

@@ -10,12 +10,14 @@
 import { loadFonts } from '@solidtv/solid'
 import type { AppHost, AppPlayer, AppPreview, PreviewRect } from './host.types'
 import { isDash, isHls } from './state/playback'
+import { setExitPromptOpen } from './state/exit'
 
 export type { AppHost, AppPlayer, AppPreview, PreviewRect, SdfFont } from './host.types'
 
 /** Samsung remote key codes (Tizen TV). */
 export const TV_KEYS = {
   back: 10009,
+  exit: 10182,
   playPause: 10252,
   play: 415,
   pause: 19,
@@ -38,19 +40,32 @@ function tizenApi(): TizenApi | undefined {
   return (globalThis as unknown as { tizen?: TizenApi }).tizen
 }
 
-/** Asks Tizen to deliver the media keys to the app (arrows, Enter and Back always arrive). */
-function registerMediaKeys(): void {
-  const keys = ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'MediaStop', 'MediaFastForward', 'MediaRewind']
-  try {
-    // Tizen type-checks both callbacks: passing undefined throws TypeMismatchError.
-    tizenApi()?.tvinputdevice?.registerKeyBatch(
-      keys,
-      () => console.log('KEYS media keys registered'),
-      (e) => console.warn('KEYS register failed', e)
-    )
-  } catch (e) {
-    console.warn('KEYS register failed', e)
+/**
+ * Asks Tizen to deliver the media keys and the Exit key to the app (arrows, Enter and Back always
+ * arrive). Exit is registered on its own so that, if a TV refuses it, the media keys still work
+ * (the TV then simply closes the app on Exit itself).
+ */
+function registerKeys(): void {
+  const register = (keys: string[], label: string) => {
+    try {
+      // Tizen type-checks both callbacks: passing undefined throws TypeMismatchError.
+      tizenApi()?.tvinputdevice?.registerKeyBatch(
+        keys,
+        () => console.log(`KEYS ${label} registered`),
+        (e) => console.warn(`KEYS ${label} register failed`, e)
+      )
+    } catch (e) {
+      console.warn(`KEYS ${label} register failed`, e)
+    }
   }
+  register(['MediaPlayPause', 'MediaPlay', 'MediaPause', 'MediaStop', 'MediaFastForward', 'MediaRewind'], 'media')
+  register(['Exit'], 'exit')
+  // Exit anywhere outside the player (the player handles it itself, see onKey) asks to exit.
+  window.addEventListener('keydown', (event) => {
+    if (event.keyCode !== TV_KEYS.exit) return
+    event.preventDefault()
+    setExitPromptOpen(true)
+  })
 }
 
 const SEEK_STEP = 10
@@ -198,6 +213,10 @@ function tizenPlayer(): AppPlayer {
         event.stopImmediatePropagation()
         if (event.type !== 'keydown') return
         switch (event.keyCode) {
+          case TV_KEYS.exit:
+            close()
+            setExitPromptOpen(true)
+            return
           case TV_KEYS.back:
           case TV_KEYS.stop:
           case 27:
@@ -443,7 +462,7 @@ function tizenPreview(): AppPreview {
 
 export function tizenHost(): AppHost {
   const params = new URLSearchParams(window.location.search)
-  registerMediaKeys()
+  registerKeys()
   return {
     platform: 'tizen',
     showFps: params.has('fps'),

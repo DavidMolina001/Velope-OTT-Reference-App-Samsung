@@ -18,7 +18,8 @@ unchanged apart from two small hooks:
   out 4 s after the last key while playing and stay up while paused. While the player is up it
   owns the remote: OK or Play/Pause toggles, Left/Right seek 10 s, Rewind/Fast-forward seek 30 s,
   Back or Stop closes it.
-- **Exit.** Back at the root of the app (genre nav) closes the app, per Samsung's guidelines.
+- **Exit.** The Exit key (registered through `tizen.tvinputdevice`) or Back at the root of the app
+  (genre nav) opens a Yes/No exit dialog (`ExitDialog.tsx`); Yes closes the app.
 - **Packaging.** Vite builds with relative asset URLs (`base: './'`) because the packaged app loads
   from the TV's filesystem. `tizen/config.xml` declares the app (id `VelSamsung.VelopeTV`) and its
   privileges (internet, TV input device, DRM playback).
@@ -74,7 +75,11 @@ screen with a message telling you exactly this.
 | Up / Down | Arrow Up / Down | Move between the genre nav and rows |
 | Left / Right | Arrow Left / Right | Move within a row or the nav; a row's 20 titles cycle seamlessly |
 | OK | Enter | Open a title / choose a genre / press a button |
-| Back | Escape / Backspace | Grid → nav → exit the app; details → back to the grid with state intact |
+| Back | Escape / Backspace | Grid → nav → exit dialog; details → back to the grid with state intact |
+| Exit | | Exit dialog, from anywhere (closes the player first) |
+
+The exit dialog asks "Exit Velope TV?" with focus on No: Left/Right choose, OK confirms, Back
+cancels and returns focus to where it was. Yes closes the app; reopen it from the TV's Apps list.
 
 Browsing behaviour:
 

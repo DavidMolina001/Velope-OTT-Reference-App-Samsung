@@ -3,11 +3,13 @@ import { Navigate, Route } from '@solidjs/router'
 import { HashRouter, KeepAliveRoute } from '@solidtv/solid/primitives/router'
 import Home from './pages/Home'
 import Details from './pages/Details'
+import ExitDialog from './components/ExitDialog'
 import { colors, layout } from './theme'
 
 const Root: Component<ParentProps> = (props) => (
   <view width={layout.width} height={layout.height} color={colors.background}>
     {props.children}
+    <ExitDialog />
   </view>
 )
 
