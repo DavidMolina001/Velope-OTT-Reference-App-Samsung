@@ -46,8 +46,12 @@ export const CLEAR_STREAM: Stream = {
   label: 'HLS (Big Buck Bunny)',
 }
 
-/** The order every player tries: the DRM its runtime supports first, clear content last. */
-export const STREAMS: Stream[] = [WIDEVINE_STREAM, FAIRPLAY_STREAM, CLEAR_STREAM]
+/**
+ * What Play now plays on the Samsung TV: Big Buck Bunny (clear HLS). The DRMtoday staging
+ * licence server refuses the TV's Widevine requests (Shaka error 6007, LICENSE_REQUEST_FAILED),
+ * so the Widevine stream is kept above for reference but not played.
+ */
+export const STREAMS: Stream[] = [CLEAR_STREAM]
 
 export function isDash(url: string): boolean {
   return /\.mpd(\?|$)/i.test(url)

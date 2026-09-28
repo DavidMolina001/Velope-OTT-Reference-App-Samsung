@@ -9,6 +9,28 @@ import { colors, layout } from './theme'
 import App from './App'
 import { installDebug } from './debug'
 
+// The TV has no console we can read: with VITE_LOG_URL set at build time (e.g. in .env.local),
+// console.log/warn/error are also POSTed there, one line per call.
+const logUrl = import.meta.env.VITE_LOG_URL
+if (logUrl) {
+  for (const level of ['log', 'warn', 'error'] as const) {
+    const original = console[level].bind(console)
+    console[level] = (...args: unknown[]) => {
+      original(...args)
+      const line = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')
+      try {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', logUrl)
+        xhr.send(`${level.toUpperCase()} ${line}`)
+      } catch {
+        // logging must never break the app
+      }
+    }
+  }
+  window.addEventListener('error', (e) => console.error('UNCAUGHT', e.message, e.filename, e.lineno))
+  window.addEventListener('unhandledrejection', (e) => console.error('UNHANDLED', String(e.reason)))
+}
+
 const host = resolveHost()
 console.log(`RUNTIME ${host.platform} ${describeRuntime()}`)
 

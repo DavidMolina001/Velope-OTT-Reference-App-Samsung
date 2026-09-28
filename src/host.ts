@@ -42,7 +42,12 @@ function tizenApi(): TizenApi | undefined {
 function registerMediaKeys(): void {
   const keys = ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'MediaStop', 'MediaFastForward', 'MediaRewind']
   try {
-    tizenApi()?.tvinputdevice?.registerKeyBatch(keys, undefined, (e) => console.warn('KEYS register failed', e))
+    // Tizen type-checks both callbacks: passing undefined throws TypeMismatchError.
+    tizenApi()?.tvinputdevice?.registerKeyBatch(
+      keys,
+      () => console.log('KEYS media keys registered'),
+      (e) => console.warn('KEYS register failed', e)
+    )
   } catch (e) {
     console.warn('KEYS register failed', e)
   }
@@ -242,6 +247,10 @@ function tizenPlayer(): AppPlayer {
       refresh()
 
       const candidates = streams.filter((stream) => this.canPlay(stream))
+      console.log(`PLAYER candidates ${candidates.map((c) => c.label).join(' | ')} UA ${navigator.userAgent}`)
+      for (const name of ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled', 'pause', 'error', 'emptied']) {
+        element.addEventListener(name, () => console.log(`VIDEO ${name} t=${element.currentTime.toFixed(1)} rs=${element.readyState} ns=${element.networkState} err=${element.error?.code ?? ''}`))
+      }
       // Try the candidates in order; a failure to start moves on to the next, a failure of the
       // last one closes the player.
       const attempt = async (index: number): Promise<void> => {

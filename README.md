@@ -88,9 +88,10 @@ In the player:
 
 ### What plays
 
-"Play now" tries, in order: **DASH + Widevine** (castLabs DRMtoday staging, through Shaka Player
-and the TV's EME), then **clear HLS** (Big Buck Bunny, Mux test streams, played natively by the
-TV). The FairPlay stream in `src/state/playback.ts` is Apple-only and is skipped here.
+"Play now" plays **Big Buck Bunny** (clear HLS, Mux test streams; Blender Foundation, CC BY 3.0),
+played natively by the TV. The Widevine stream from the SolidTV app stays in
+`src/state/playback.ts` for reference but is not played: the DRMtoday staging licence server
+refuses the TV's requests (Shaka error 6007).
 
 ## Resolution and diagnostics
 
@@ -122,8 +123,8 @@ A desktop browser says little about a TV's GPU; measure performance on the TV it
 
 ## Known limitations
 
-- **Widevine on the TV** depends on the TV's EME support and the DRMtoday staging licence; if it
-  fails to start, the player falls back to clear HLS on its own.
+- **No DRM playback yet**: Widevine against DRMtoday staging fails on the TV (licence refused);
+  it needs a licence server that accepts the TV's requests.
 - The player controls are DOM over the video, not Lightning nodes, so they are styled in CSS.
 - The MSDF font atlases (from the L3 build) miss a few glyphs, e.g. the em dash renders as `?`.
 
@@ -148,7 +149,7 @@ src/
   pages/Details.tsx      Poster, metadata, mock action buttons, back handling
   components/            Prop-driven view components (no state of their own beyond visuals)
   state/selection.ts     The title handed from Home to Details
-  state/playback.ts      The streams Play now tries (Widevine DASH, clear HLS; FairPlay is skipped)
+  state/playback.ts      The streams Play now tries (Big Buck Bunny; Widevine/FairPlay kept for reference)
   debug.ts               Dev-only hooks (__velope: state, node count)
 tizen/config.xml, icon.png  Samsung app manifest (id VelSamsung.VelopeTV, privileges)
 scripts/tizen.sh         Build, package (signed .wgt), install and launch on the TV
