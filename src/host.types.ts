@@ -27,12 +27,25 @@ export interface AppPreview {
   stop(): void
 }
 
+/** A preview's playing video, handed to the full player so playback carries on uninterrupted. */
+export interface HandedOverVideo {
+  video: HTMLVideoElement
+  /** Frees the streaming engine behind it; the player calls this when it closes. */
+  release(): void
+}
+
 /** The hero banner's background video: full screen, BEHIND the canvas (see index.html). */
 export interface AppHeroPreview {
   /** Plays `url` with sound; `onPlaying` fires once, when the first frame is on screen. */
   start(url: string, onPlaying: () => void, onFailed: () => void): void
   /** Stops and removes it. Safe to call when nothing plays. */
   stop(): void
+  /**
+   * Gives up the playing preview so the full player can continue it seamlessly, or returns
+   * undefined when there is nothing to continue: not playing yet, or it did not start at the
+   * beginning of the asset (then the full player starts the asset from the start instead).
+   */
+  handOver(): HandedOverVideo | undefined
 }
 
 /** Full-screen playback of one stream, native to each runtime. */
@@ -44,7 +57,7 @@ export interface AppPlayer {
    * next when a stream fails to start (e.g. no CDM for its DRM). `onClosed` fires when playback
    * ends, every candidate failed, or the user leaves it.
    */
-  play(streams: Stream[], onClosed: () => void, title?: string): void
+  play(streams: Stream[], onClosed: () => void, title?: string, continueFrom?: HandedOverVideo): void
   /** Pause/resume. */
   togglePause(): void
   /** Tears the player down. Safe to call when nothing plays. */

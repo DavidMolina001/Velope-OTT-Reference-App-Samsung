@@ -103,7 +103,10 @@ Browsing behaviour:
   15 s, then the next item comes in (looping). Left/Right move between Play and the tick; Right
   from the tick is the next item, Left from Play the previous one. Down moves to the rows (the
   hero slides away and its video stops), Up returns; Back from the rows returns to the hero, Back
-  on the hero opens the exit dialog. Play opens the full-screen player straight from the hero.
+  on the hero opens the exit dialog. Play opens the full-screen player straight from the hero and, when the preview is playing from
+  the start of the asset, continues it seamlessly: the player adopts the preview's own video
+  element and streaming engine (`handOver` in `host.ts`), so nothing reloads or rewinds. Before
+  the preview has started (or for a preview that began mid-asset) Play starts from 0.
 
 - **Focus walks first.** Moving right, focus crosses the screen to the middle tile (the 4th of 7),
   then stays there while the row slides and cycles forever. Moving left, focus walks back to the

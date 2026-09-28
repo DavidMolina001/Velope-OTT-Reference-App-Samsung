@@ -8,7 +8,7 @@
 //   play/pause state, progress bar, times) and its own remote handling while it is up;
 // - exit: Back at the root of the app closes it, as Samsung's app guidelines expect.
 import { loadFonts } from '@solidtv/solid'
-import type { AppHeroPreview, AppHost, AppPlayer, AppPreview, PreviewRect } from './host.types'
+import type { AppHeroPreview, AppHost, AppPlayer, AppPreview, HandedOverVideo, PreviewRect } from './host.types'
 import { isDash, isHls } from './state/playback'
 import { setExitPromptOpen } from './state/exit'
 
@@ -214,9 +214,11 @@ function tizenPlayer(): AppPlayer {
       if (!stream.drm) return true
       return hasEme && 'com.widevine.alpha' in stream.drm
     },
-    play(streams, onClosed, title = '') {
+    play(streams, onClosed, title = '', continueFrom?: HandedOverVideo) {
       stop()
-      const element = document.createElement('video')
+      // Continuing a preview: its video element (already playing, with its streaming engine)
+      // becomes the player's, restyled to full screen in front, so nothing reloads or rewinds.
+      const element = continueFrom?.video ?? document.createElement('video')
       element.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;background:#000;object-fit:contain;z-index:10'
       element.autoplay = true
       element.playsInline = true
@@ -318,7 +320,7 @@ function tizenPlayer(): AppPlayer {
         canvases.forEach((canvas) => (canvas.style.visibility = ''))
       }
       video = element
-      document.body.appendChild(element)
+      if (!continueFrom) document.body.appendChild(element)
       document.body.appendChild(controls.root)
       document.body.appendChild(seekBadge.root)
       refresh()
@@ -418,7 +420,13 @@ function tizenPlayer(): AppPlayer {
           next()
         }
       }
-      void attempt(0)
+      if (continueFrom) {
+        hls = { destroy: continueFrom.release }
+        buffering = false
+        refresh()
+        controls.show(element)
+        console.log(`PLAYER continuing preview at t=${element.currentTime.toFixed(1)}`)
+      } else void attempt(0)
     },
     togglePause() {
       if (!video) return
@@ -520,6 +528,8 @@ function tizenHeroPreview(): AppHeroPreview {
   let video: HTMLVideoElement | undefined
   let hls: { destroy(): void } | undefined
   let generation = 0
+  // Set on the first frame: whether playback began at the start of the asset.
+  let startedAtBeginning = false
   const stop = () => {
     generation++
     hls?.destroy()
@@ -542,9 +552,11 @@ function tizenHeroPreview(): AppHeroPreview {
       element.autoplay = true
       element.playsInline = true
       let reported = false
+      startedAtBeginning = false
       element.addEventListener('playing', () => {
         if (reported || current !== generation) return
         reported = true
+        startedAtBeginning = element.currentTime < 1
         console.log(`HERO video playing ${element.videoWidth}x${element.videoHeight}`)
         onPlaying()
       })
@@ -570,6 +582,17 @@ function tizenHeroPreview(): AppHeroPreview {
       })
     },
     stop,
+    handOver() {
+      if (!video || video.paused || !startedAtBeginning) return undefined
+      const handed = video
+      const engine = hls
+      // Forget it without stopping it: from here the player owns the element and the engine.
+      generation++
+      video = undefined
+      hls = undefined
+      console.log(`HERO video handed over at t=${handed.currentTime.toFixed(1)}`)
+      return { video: handed, release: () => engine?.destroy() }
+    },
   }
 }
 

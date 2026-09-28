@@ -326,8 +326,11 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
       return
     }
     if (!host.player) return
+    // Seamless: if the hero's preview is playing from the start of the asset, the player takes
+    // over that very video and carries on from the same moment; otherwise it starts from 0.
+    const continueFrom = host.heroPreview?.handOver()
     setPlayerOpen(true)
-    host.player.play(STREAMS, () => setPlayerOpen(false), item.title)
+    host.player.play(STREAMS, () => setPlayerOpen(false), item.title, continueFrom)
   }
 
   // The hero cycle, while the hero is on screen: after heroPreviewDelay its preview starts behind
