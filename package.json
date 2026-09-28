@@ -1,0 +1,29 @@
+{
+  "name": "velope-ott-reference-app-samsung",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Velope OTT Developer Test reference app for Samsung TVs (Tizen): the SolidTV app (SolidJS + Lightning 3 renderer) with Samsung remote keys and on-screen player controls",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host --port 4173",
+    "typecheck": "tsc --noEmit",
+    "tizen": "sh scripts/tizen.sh",
+    "tizen:package": "sh scripts/tizen.sh package"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.16.1",
+    "@solidtv/renderer": "1.9.3",
+    "@solidtv/solid": "1.6.3",
+    "hls.js": "^1.7.3",
+    "shaka-player": "^4.16.50",
+    "solid-js": "^1.9.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.0",
+    "vite-plugin-solid": "^2.11.10"
+  },
+  "packageManager": "pnpm@10.34.5"
+}
