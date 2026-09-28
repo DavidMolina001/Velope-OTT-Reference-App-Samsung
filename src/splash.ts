@@ -34,7 +34,7 @@ const HTML = `
 <div class="ring"></div>
 <div class="word"><span>D</span><span>M</span><span>P</span></div>
 <div class="bar"></div>
-<div class="tag">A MER-WE-BO DEVIS PRODUCTION</div>
+<div class="tag">A DAVID MOLINA PRODUCTION</div>
 <div class="dots"><i></i><i></i><i></i></div>`
 
 type Ctx = AudioContext

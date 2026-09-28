@@ -21,7 +21,7 @@ unchanged apart from two small hooks:
 - **Exit.** The Exit key (registered through `tizen.tvinputdevice`) or Back at the root of the app
   (genre nav) opens a Yes/No exit dialog (`ExitDialog.tsx`); Yes closes the app.
 - **Splash.** A DOM overlay (`src/splash.ts`) shown from boot until Home's first rows are ready:
-  the DMP monogram drops in over a pulsing ring, then the bar and "A MER-WE-BO DEVIS PRODUCTION". Samsung's own loading dots before the app starts are
+  the DMP monogram drops in over a pulsing ring, then the bar and "A DAVID MOLINA PRODUCTION". Samsung's own loading dots before the app starts are
   the OS's and stay (its video-splash-screen option was tried and dropped: it looked wrong).
   Its chime is synthesised with Web Audio (a tick, C5-E5-G5 as the letters land, a C6/G6 shimmer),
   so no audio file ships. It stays at least 2.8 s and fades once the app is ready.
