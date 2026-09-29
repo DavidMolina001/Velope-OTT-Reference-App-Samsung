@@ -67,7 +67,7 @@ const HeroBanner: Component<Props> = (props) => {
               width={layout.width}
               height={layout.height}
               color={0xffffffff}
-              src={near() ? backdropUrl(item.backdropPath, layout.width) : undefined}
+              src={near() ? backdropUrl(item.backdropPath, layout.heroArtWidth) : undefined}
               alpha={i() === props.index && !props.videoShowing ? 1 : 0}
               transition={artTransition}
             />

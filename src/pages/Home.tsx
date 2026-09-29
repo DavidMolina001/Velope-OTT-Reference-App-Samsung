@@ -14,7 +14,7 @@ import { buildRows, fetchRowItems, fetchRowPage, extendRowItems, MAX_DISCOVER_PA
 import { colors, easing, layout } from '../theme'
 import { exposeDebug } from '../debug'
 import { exitPromptOpen, setExitPromptOpen } from '../state/exit'
-import { splash } from '../state/boot'
+import { splash, splashHidden } from '../state/boot'
 
 const NAV_GENRE_COUNT = 4
 const ROW_PREFETCH_AHEAD = 3
@@ -53,6 +53,9 @@ const extending = new Set<string>()
 // When the viewer last pressed a key (any key, anywhere): the hero waits for idleness to advance.
 let lastKeyAt = 0
 const noteKey = () => (lastKeyAt = performance.now())
+// Dormant: no key for layout.dormantAfter (the viewer has left). Previews stop and the hero keeps
+// its artwork, instead of streaming and playing sound all night; any key wakes it.
+const [dormant, setDormant] = createSignal(false)
 
 // KeepAliveRoute passes isAlive: false while the details page is up, true again on return.
 const Home: Component<{ isAlive?: () => boolean }> = (props) => {
@@ -204,12 +207,27 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     )
   )
 
+  const wake = () => {
+    noteKey()
+    if (dormant()) {
+      console.log('IDLE wake')
+      setDormant(false)
+    }
+  }
+  const dormancy = setInterval(() => {
+    if (!dormant() && performance.now() - lastKeyAt > layout.dormantAfter) {
+      console.log('IDLE dormant')
+      setDormant(true)
+    }
+  }, 30000)
   onMount(() => {
-    window.addEventListener('keydown', noteKey, true)
+    lastKeyAt = performance.now()
+    window.addEventListener('keydown', wake, true)
     void boot()
   })
   onCleanup(() => {
-    window.removeEventListener('keydown', noteKey, true)
+    window.removeEventListener('keydown', wake, true)
+    clearInterval(dormancy)
     inflight.abort()
   })
 
@@ -374,27 +392,55 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     host.player.play(STREAMS, () => setPlayerOpen(false), item.title, continueFrom)
   }
 
-  // The hero cycle, while the hero is on screen: after heroPreviewDelay its preview starts behind
-  // the canvas; once it plays, the active page pill fills over heroPreviewLength, then the next
-  // item comes in (looping) and the cycle restarts. If the video cannot play, the pill fills over
-  // the still artwork instead. Leaving the hero (rows, details, player, exit dialog) stops it.
   // A memo, so moving between the nav and the hero (both "active") does not restart the preview.
   const heroActive = createMemo(
-    () => (props.isAlive?.() ?? true) && !exitPromptOpen() && !playerOpen() && state.phase === 'ready' && state.zone !== 'grid' && heroItems().length > 0
+    () =>
+      (props.isAlive?.() ?? true) &&
+      splashHidden() &&
+      !dormant() &&
+      !exitPromptOpen() &&
+      !playerOpen() &&
+      state.phase === 'ready' &&
+      state.zone !== 'grid' &&
+      heroItems().length > 0
   )
+
+  // The hero video: ONE stream for the whole time the hero is on screen, paused while the artwork
+  // covers it and resumed when an item reveals it. Restarting the stream per item cost this TV
+  // about 5 s of dropped frames each time; continuing it costs nothing, and each item shows a
+  // different stretch of the asset. Leaving the hero (rows, details, player, exit dialog,
+  // dormant) stops it; coming back starts it again from 0.
+  const [heroVideoPlaying, setHeroVideoPlaying] = createSignal(false)
+  createEffect(() => {
+    if (!heroActive()) return
+    const heroPreview = host.heroPreview
+    if (!heroPreview) return
+    console.log('HERO preview start')
+    heroPreview.start(
+      CLEAR_STREAM.url,
+      () => setHeroVideoPlaying(true),
+      () => setHeroVideoPlaying(false)
+    )
+    onCleanup(() => {
+      heroPreview.stop()
+      setHeroVideoPlaying(false)
+    })
+  })
+
+  // Per item: after heroPreviewDelay the running video is revealed (the artwork fades out) and
+  // the active page pill fills over heroPreviewLength; if the video cannot play, the pill fills
+  // over the still artwork instead. When it is full the video is covered again and the item
+  // stays; the next item only comes in once the remote has been idle for heroIdleBeforeAdvance,
+  // so an item never changes while the viewer is pressing keys (straight away if already idle).
   createEffect(() => {
     const index = state.heroIndex
     const active = heroActive()
     setHeroProgress(0)
     setHeroVideoShowing(false)
     if (!active) return
-    let startedAt = 0
-    let ticker: ReturnType<typeof setInterval> | undefined
-    // When the preview has run its length it stops and the item stays (artwork back, pill full).
-    // The carousel only moves on once the remote has been idle for heroIdleBeforeAdvance, so an
-    // item never changes while the viewer is pressing keys; if they were already idle, it moves
-    // on as soon as the preview ends.
     let finished = false
+    let ticker: ReturnType<typeof setInterval> | undefined
+    let startedAt = 0
     const runProgress = () => {
       if (ticker) return
       startedAt = performance.now()
@@ -404,33 +450,31 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
           setHeroProgress(progress)
           if (progress < 1) return
           finished = true
-          heroPreview?.stop()
           setHeroVideoShowing(false)
+          host.heroPreview?.pause()
           console.log(`HERO preview finished index=${index}, idle ${Math.round(performance.now() - lastKeyAt)} ms`)
         }
         if (performance.now() - lastKeyAt >= layout.heroIdleBeforeAdvance) stepHero(1)
-      }, 100)
+      }, 300)
     }
-    const heroPreview = host.heroPreview
-    const delay = setTimeout(() => {
-      if (!heroPreview) return runProgress()
-      console.log(`HERO preview start index=${index}`)
-      heroPreview.start(
-        CLEAR_STREAM.url,
-        () => {
-          setHeroVideoShowing(true)
-          runProgress()
-        },
-        () => runProgress()
-      )
-    }, layout.heroPreviewDelay)
+    const [armed, setArmed] = createSignal(false)
+    const delay = setTimeout(() => setArmed(true), layout.heroPreviewDelay)
     // A stream that never starts must not stall the carousel.
     const fallback = setTimeout(runProgress, layout.heroPreviewDelay + 8000)
+    createEffect(() => {
+      if (!armed() || finished) return
+      if (heroVideoPlaying()) {
+        host.heroPreview?.resume()
+        setHeroVideoShowing(true)
+        console.log(`HERO preview showing index=${index}`)
+        runProgress()
+      }
+    })
     onCleanup(() => {
       clearTimeout(delay)
       clearTimeout(fallback)
       if (ticker) clearInterval(ticker)
-      heroPreview?.stop()
+      host.heroPreview?.pause()
     })
   })
 
@@ -442,7 +486,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     const rowIndex = state.rowIndex
     const col = state.cols[rowIndex] ?? 0
     const ready =
-      alive && !exitPromptOpen() && !playerOpen() && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
+      alive && !dormant() && !exitPromptOpen() && !playerOpen() && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
     setPreview(null)
     if (!ready) return
     const timer = setTimeout(() => {

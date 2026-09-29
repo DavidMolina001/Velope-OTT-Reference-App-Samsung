@@ -9,7 +9,7 @@ import { colors, layout } from './theme'
 import App from './App'
 import { installDebug } from './debug'
 import { showSplash } from './splash'
-import { setSplash } from './state/boot'
+import { setSplash, setSplashHidden } from './state/boot'
 
 // The TV has no console we can read: with VITE_LOG_URL set at build time (e.g. in .env.local),
 // console.log/warn/error are also POSTed there, one line per call.
@@ -35,7 +35,7 @@ if (logUrl) {
 }
 
 // First thing on screen, before the renderer and fonts load.
-setSplash(showSplash())
+setSplash(showSplash(() => setSplashHidden(true)))
 
 const host = resolveHost()
 console.log(`RUNTIME ${host.platform} ${describeRuntime()}`)
@@ -67,6 +67,41 @@ const renderer = created.renderer as RendererMain
 const render = created.render
 registerDefaultShaders(renderer.stage.shManager)
 installDebug(renderer)
+// Metrics probe, remote-logging builds only: every 5 s, JS heap, DOM/video/canvas counts, the
+// renderer's node count, frames per second and main-thread long tasks (> 50 ms), so a slowdown on
+// the TV can be told apart as a leak, a render-loop stall or a decoder problem.
+if (logUrl) {
+  type Tree = { children?: readonly unknown[] } | undefined
+  const countNodes = (node: Tree): number => (node ? 1 + (node.children ?? []).reduce<number>((n, c) => n + countNodes(c as Tree), 0) : 0)
+  let frames = 0
+  let longTasks = 0
+  let longest = 0
+  const tick = () => {
+    frames++
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.duration <= 50) continue
+        longTasks++
+        longest = Math.max(longest, entry.duration)
+      }
+    }).observe({ type: 'longtask', buffered: false })
+  } catch {
+    // no longtask support on this runtime
+  }
+  const started = performance.now()
+  setInterval(() => {
+    const mem = (performance as { memory?: { usedJSHeapSize: number } }).memory
+    const heap = mem ? (mem.usedJSHeapSize / 1e6).toFixed(1) : '-1'
+    console.log(
+      `METRICS up=${Math.round((performance.now() - started) / 1000)} heapMB=${heap} domNodes=${document.getElementsByTagName('*').length} videos=${document.querySelectorAll('video').length} canvases=${document.querySelectorAll('canvas').length} lightningNodes=${countNodes(renderer.root as unknown as Tree)} fps=${(frames / 5).toFixed(1)} longTasks=${longTasks} longestMs=${Math.round(longest)}`
+    )
+    frames = longTasks = longest = 0
+  }, 5000)
+}
 host.onRenderer?.(renderer)
 if (host.showFps) setupFPS({ renderer })
 

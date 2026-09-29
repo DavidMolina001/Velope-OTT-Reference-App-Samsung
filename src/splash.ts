@@ -110,7 +110,7 @@ export interface Splash {
   ready(): void
 }
 
-export function showSplash(): Splash {
+export function showSplash(onHidden?: () => void): Splash {
   const shownAt = performance.now()
   const style = document.createElement('style')
   style.textContent = CSS
@@ -133,6 +133,7 @@ export function showSplash(): Splash {
           root.remove()
           style.remove()
           console.log('SPLASH hidden')
+          onHidden?.()
         }, FADE)
       }, wait)
     },

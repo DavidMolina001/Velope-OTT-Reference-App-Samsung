@@ -142,7 +142,12 @@ function createControls(title: string) {
     <div style="margin-top:24px;font-size:24px;color:rgba(255,255,255,.7)">
       OK / ▶❚❚ play-pause &nbsp;&nbsp; ◀ ▶ seek 10s &nbsp;&nbsp; ◀◀ ▶▶ seek 30s &nbsp;&nbsp; Back / ■ stop
     </div>`
-  const ref = (name: string) => root.querySelector(`[data-r="${name}"]`) as HTMLElement
+  const refs = new Map<string, HTMLElement>()
+  const ref = (name: string) => {
+    let el = refs.get(name)
+    if (!el) refs.set(name, (el = root.querySelector(`[data-r="${name}"]`) as HTMLElement))
+    return el
+  }
   ref('title').textContent = title
   let hideTimer: ReturnType<typeof setTimeout> | undefined
   let visible = true
@@ -387,7 +392,7 @@ function tizenPlayer(): AppPlayer {
             const { default: Hls } = await import('hls.js')
             if (video !== element) return
             if (!Hls.isSupported()) throw new Error('hls.js not supported here')
-            const instance = new Hls()
+            const instance = new Hls({ backBufferLength: 30 })
             hls = instance
             await new Promise<void>((resolve, reject) => {
               instance.on(Hls.Events.ERROR, (_event: unknown, data: { fatal?: boolean; details?: string }) => {
@@ -441,6 +446,35 @@ function tizenPlayer(): AppPlayer {
 // video without copying every frame into a texture, too heavy for a TV). Quality is capped at
 // 480p, so a 460x330 preview never pulls the 1080p variant. It is
 // hidden until the first frame plays; the expanded tile is black until then.
+/** A preview's hls.js engine, as far as quality control needs it. */
+interface QualityEngine {
+  autoLevelCapping: number
+  nextLevel: number
+  loadLevel: number
+  levels: { height: number }[]
+  config: { maxBufferLength: number }
+  once(event: string, handler: () => void): void
+}
+
+/** Caps adaptive quality at `maxHeight` once the variants are known (previews). */
+function capQuality(engine: QualityEngine, maxHeight: number): void {
+  const cap = engine.levels.reduce((best, level, index) => (level.height <= maxHeight && level.height > (engine.levels[best]?.height ?? 0) ? index : best), 0)
+  engine.autoLevelCapping = cap
+}
+
+/**
+ * A preview going full screen: lifts the cap and switches to the top variant at the next fragment
+ * (flushing the buffered low-quality video), then hands quality back to adaptive streaming.
+ */
+function upgradeQuality(engine: QualityEngine | undefined): void {
+  if (!engine?.levels?.length) return
+  engine.autoLevelCapping = -1
+  engine.config.maxBufferLength = 30
+  const top = engine.levels.reduce((best, level, index) => (level.height > (engine.levels[best]?.height ?? 0) ? index : best), 0)
+  engine.once('hlsLevelSwitched', () => (engine.loadLevel = -1))
+  engine.nextLevel = top
+}
+
 /** The tile preview growing into the full player. */
 const EXPAND_MS = 400
 const EXPAND_EASE = 'cubic-bezier(.3,.8,.3,1)'
@@ -515,13 +549,11 @@ function tizenPreview(): AppPreview {
           element.src = url
           return
         }
-        const instance = new Hls({ maxBufferLength: 10 })
+        // backBufferLength: played-back video is dropped from memory (the default keeps all of it).
+        const instance = new Hls({ maxBufferLength: 10, backBufferLength: 30 })
         hls = instance
         // Up to 480p: sharp in a 460x330 tile, and never the 1080p variant for a preview.
-        instance.on(Hls.Events.MANIFEST_PARSED, () => {
-          const cap = instance.levels.reduce((best, level, index) => (level.height <= 480 && level.height > (instance.levels[best]?.height ?? 0) ? index : best), 0)
-          instance.autoLevelCapping = cap
-        })
+        instance.on(Hls.Events.MANIFEST_PARSED, () => capQuality(instance as unknown as QualityEngine, 480))
         instance.loadSource(url)
         instance.attachMedia(element)
         console.log('PREVIEW start')
@@ -545,25 +577,7 @@ function tizenPreview(): AppPreview {
       // Full screen now: lift the preview's 480p cap, and switch at the next fragment (hls.js
       // flushes the 480p it has already buffered ahead; otherwise that would play out first).
       // Done once the animation has finished, so the buffer flush does not compete with it.
-      // nextLevel = the top variant flushes the buffered 480p and switches at the next fragment;
-      // once switched, loadLevel = -1 hands quality back to adaptive streaming without a flush.
-      type Engine = {
-        autoLevelCapping: number
-        nextLevel: number
-        loadLevel: number
-        levels: { height: number }[]
-        config: { maxBufferLength: number }
-        once(event: string, handler: () => void): void
-      }
-      const levels = engine as unknown as Engine | undefined
-      const upgradeQuality = () => {
-        if (!levels?.levels?.length) return
-        levels.autoLevelCapping = -1
-        levels.config.maxBufferLength = 30
-        const top = levels.levels.reduce((best, level, index) => (level.height > (levels.levels[best]?.height ?? 0) ? index : best), 0)
-        levels.once('hlsLevelSwitched', () => (levels.loadLevel = -1))
-        levels.nextLevel = top
-      }
+      const levels = engine as unknown as QualityEngine | undefined
       // Nothing else draws meanwhile: the canvas stops being composited under the growing video.
       document.querySelectorAll('canvas').forEach((canvas) => (canvas.style.visibility = 'hidden'))
       const bar = box.lastElementChild as HTMLElement | null
@@ -607,7 +621,7 @@ function tizenPreview(): AppPreview {
       return new Promise<HandedOverVideo>((resolve) =>
         setTimeout(
           () => {
-            upgradeQuality()
+            upgradeQuality(levels)
             resolve({
               video: handed,
               release: () => {
@@ -630,6 +644,7 @@ function tizenPreview(): AppPreview {
 function tizenHeroPreview(): AppHeroPreview {
   let video: HTMLVideoElement | undefined
   let hls: { destroy(): void } | undefined
+  let engine: QualityEngine | undefined
   let generation = 0
   // Set on the first frame: whether playback began at the start of the asset.
   let startedAtBeginning = false
@@ -637,6 +652,7 @@ function tizenHeroPreview(): AppHeroPreview {
     generation++
     hls?.destroy()
     hls = undefined
+    engine = undefined
     if (video) {
       console.log('HERO video stop')
       video.pause()
@@ -675,8 +691,12 @@ function tizenHeroPreview(): AppHeroPreview {
           element.src = url
           return
         }
-        const instance = new Hls({ maxBufferLength: 20 })
+        // Previews stay at 720p or below (no 1080p transmuxing while the viewer is idle), and
+        // played-back video is dropped from memory (backBufferLength; the default keeps all of it).
+        const instance = new Hls({ maxBufferLength: 20, backBufferLength: 30 })
         hls = instance
+        engine = instance as unknown as QualityEngine
+        instance.on(Hls.Events.MANIFEST_PARSED, () => capQuality(instance as unknown as QualityEngine, 720))
         instance.on(Hls.Events.ERROR, (_event: unknown, data: { fatal?: boolean }) => {
           if (data.fatal && current === generation) onFailed()
         })
@@ -684,17 +704,27 @@ function tizenHeroPreview(): AppHeroPreview {
         instance.attachMedia(element)
       })
     },
+    pause() {
+      video?.pause()
+    },
+    resume() {
+      void video?.play().catch(() => undefined)
+    },
     stop,
     handOver() {
       if (!video || video.paused || !startedAtBeginning) return undefined
       const handed = video
-      const engine = hls
+      const owned = hls
+      const quality = engine
       // Forget it without stopping it: from here the player owns the element and the engine.
       generation++
       video = undefined
       hls = undefined
+      engine = undefined
+      // Full screen now: lift the preview's cap.
+      upgradeQuality(quality)
       console.log(`HERO video handed over at t=${handed.currentTime.toFixed(1)}`)
-      return { video: handed, release: () => engine?.destroy() }
+      return { video: handed, release: () => owned?.destroy() }
     },
   }
 }

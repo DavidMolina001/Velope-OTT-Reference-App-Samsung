@@ -41,6 +41,11 @@ export const layout = {
   heroIdleBeforeAdvance: 7000,
   /** Hero items: the first titles with wide artwork from the current genre's first row. */
   heroItemCount: 6,
+  /** Hero artwork size requested from TMDB: w1280 upscaled is indistinguishable behind the
+   *  gradients on a TV, and a quarter of the texture memory of the original (up to 4K). */
+  heroArtWidth: 1280,
+  /** With no key press for this long the app goes dormant: previews stop, artwork stays. */
+  dormantAfter: 10 * 60 * 1000,
 } as const
 
 export const easing = 'cubic-bezier(0.25,0.1,0.25,1)'
