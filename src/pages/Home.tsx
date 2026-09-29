@@ -324,19 +324,23 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
   const [favourites, setFavourites] = createSignal<ReadonlySet<number>>(new Set())
   const heroItem = () => heroItems()[state.heroIndex]
 
-  // OK while a tile's preview is on screen commits to it: the preview grows from the tile into the
+  // OK once a tile's preview has played for 7 s commits to it: the preview grows from the tile into the
   // full player (0.4 s) and carries on from the same second; Back from that player opens the
-  // title's details page. Before the preview shows, OK opens the details page as usual.
+  // title's details page. Before that, OK opens the details page as usual.
   function commitTilePreview(): boolean {
     const tile = preview()
     const row = state.rows[state.rowIndex]
-    if (!tile || tile.row !== state.rowIndex || !row?.items.length || !host.player || !host.preview?.isShowing()) return false
+    // Only once the preview has played previewCommitAfter: a quick OK still means "tell me more".
+    if (!tile || tile.row !== state.rowIndex || !row?.items.length || !host.player || !host.preview) return false
+    if (host.preview.shownFor() < layout.previewCommitAfter) return false
     const item = row.items[tile.col % row.items.length]
     const expanding = host.preview.expandToFull()
     if (!item || !expanding) return false
     const player = host.player
-    setPlayerOpen(true)
-    void expanding.then((handed) =>
+    // The page changes (tile collapsing, previews stopping) wait until the grow has finished, so
+    // the TV spends the animation on the animation alone.
+    void expanding.then((handed) => {
+      setPlayerOpen(true)
       player.play(
         STREAMS,
         () => {
@@ -347,7 +351,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
         item.title,
         handed
       )
-    )
+    })
     return true
   }
 

@@ -30,6 +30,8 @@ export const layout = {
   expandedTileWidth: 460,
   /** How long focus rests on a tile before it expands and plays its preview. */
   previewDelay: 3000,
+  /** OK on a tile grows its preview into the full player only once it has played this long. */
+  previewCommitAfter: 7000,
   /** Where the rows start while the hero banner is on screen (the first row peeks below it). */
   heroGridTop: 800,
   /** Hero: rest before its preview starts, and how long each preview plays before advancing. */

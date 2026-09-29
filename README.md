@@ -119,10 +119,12 @@ Browsing behaviour:
   starts) and plays Big Buck Bunny over it with a progress bar along the bottom (where it is in the
   whole video), with sound, capped at 480p. In the middle
   slot the tile grows to both sides and its neighbours move apart; elsewhere it grows to the right.
-  Pressing OK while the preview's picture is on screen commits to it: the preview grows from the
-  tile into the full player (0.4 s) and carries on from the same second, lifting the 480p cap
-  (hls.js flushes the buffered 480p so it reaches 1080p within seconds); Back from that player
-  opens the title's details page. Before the preview shows, OK opens the details page as usual.
+  Pressing OK once the preview has played for 7 s commits to it: the preview grows from the tile
+  into the full player (0.4 s, a GPU transform: the box takes its full-screen size at once and is
+  scaled from the tile, about 60 fps on the TV; page changes wait until it ends) and carries on
+  from the same second. Then the 480p cap is lifted and hls.js switches to the top variant
+  (flushing the buffered 480p) before returning to adaptive quality. Back from that player opens
+  the title's details page. Before 7 s, OK opens the details page as usual.
   Any other focus change or leaving the grid stops it (`host.ts` `tizenPreview`,
   `CarouselRow.tsx` `tileX`).
 

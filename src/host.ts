@@ -449,6 +449,7 @@ function tizenPreview(): AppPreview {
   let video: HTMLVideoElement | undefined
   let frame: HTMLDivElement | undefined
   let showing = false
+  let shownAt = 0
   let hls: { destroy(): void } | undefined
   let generation = 0
   const stop = () => {
@@ -495,6 +496,7 @@ function tizenPreview(): AppPreview {
       element.addEventListener('playing', () => {
         if (current !== generation) return
         box.style.opacity = '1'
+        if (!showing) shownAt = performance.now()
         showing = true
         console.log(`PREVIEW playing ${element.videoWidth}x${element.videoHeight} at ${rect.x},${rect.y} ${rect.width}x${rect.height} muted=${element.muted}`)
       })
@@ -527,6 +529,7 @@ function tizenPreview(): AppPreview {
     },
     stop,
     isShowing: () => showing && !!video && !video.paused,
+    shownFor: () => (showing && video && !video.paused ? performance.now() - shownAt : 0),
     expandToFull() {
       if (!showing || !video || !frame) return undefined
       const handed = video
@@ -541,29 +544,79 @@ function tizenPreview(): AppPreview {
       console.log(`PREVIEW expanding to full screen at t=${handed.currentTime.toFixed(1)}`)
       // Full screen now: lift the preview's 480p cap, and switch at the next fragment (hls.js
       // flushes the 480p it has already buffered ahead; otherwise that would play out first).
-      const levels = engine as { autoLevelCapping?: number; nextLevel?: number; config?: { maxBufferLength?: number } } | undefined
-      if (levels) {
-        levels.autoLevelCapping = -1
-        if (levels.config) levels.config.maxBufferLength = 30
-        levels.nextLevel = -1
+      // Done once the animation has finished, so the buffer flush does not compete with it.
+      // nextLevel = the top variant flushes the buffered 480p and switches at the next fragment;
+      // once switched, loadLevel = -1 hands quality back to adaptive streaming without a flush.
+      type Engine = {
+        autoLevelCapping: number
+        nextLevel: number
+        loadLevel: number
+        levels: { height: number }[]
+        config: { maxBufferLength: number }
+        once(event: string, handler: () => void): void
       }
+      const levels = engine as unknown as Engine | undefined
+      const upgradeQuality = () => {
+        if (!levels?.levels?.length) return
+        levels.autoLevelCapping = -1
+        levels.config.maxBufferLength = 30
+        const top = levels.levels.reduce((best, level, index) => (level.height > (levels.levels[best]?.height ?? 0) ? index : best), 0)
+        levels.once('hlsLevelSwitched', () => (levels.loadLevel = -1))
+        levels.nextLevel = top
+      }
+      // Nothing else draws meanwhile: the canvas stops being composited under the growing video.
+      document.querySelectorAll('canvas').forEach((canvas) => (canvas.style.visibility = 'hidden'))
       const bar = box.lastElementChild as HTMLElement | null
       if (bar) bar.style.display = 'none'
-      box.style.zIndex = '9'
-      box.style.transition = `left ${EXPAND_MS}ms ${EXPAND_EASE},top ${EXPAND_MS}ms ${EXPAND_EASE},width ${EXPAND_MS}ms ${EXPAND_EASE},height ${EXPAND_MS}ms ${EXPAND_EASE},border-radius ${EXPAND_MS}ms`
-      handed.style.objectFit = 'contain'
+      // Smooth on a TV: the box jumps to its final full-screen size at once and is scaled down onto
+      // the tile with a transform, which then animates to none. A transform is composited by the
+      // GPU; animating left/top/width/height instead re-laid out the page on every frame (jagged).
+      const from = box.getBoundingClientRect()
+      const screenW = window.innerWidth
+      const screenH = window.innerHeight
+      box.style.transition = 'none'
+      Object.assign(box.style, {
+        zIndex: '9',
+        left: '0px',
+        top: '0px',
+        width: `${screenW}px`,
+        height: `${screenH}px`,
+        borderRadius: '0px',
+        transformOrigin: '0 0',
+        willChange: 'transform',
+        transform: `translate(${from.left}px, ${from.top}px) scale(${from.width / screenW}, ${from.height / screenH})`,
+      })
       void box.offsetWidth
-      Object.assign(box.style, { left: '0px', top: '0px', width: '100%', height: '100%', borderRadius: '0px' })
+      box.style.transition = `transform ${EXPAND_MS}ms ${EXPAND_EASE}`
+      box.style.transform = 'none'
+      if (import.meta.env.VITE_LOG_URL) {
+        // Frame pacing of the animation, to judge smoothness on the TV from the log.
+        const start = performance.now()
+        let last = start
+        let frames = 0
+        let worst = 0
+        const sample = (now: number) => {
+          frames++
+          worst = Math.max(worst, now - last)
+          last = now
+          if (now - start < EXPAND_MS) requestAnimationFrame(sample)
+          else console.log(`PREVIEW expand frames=${frames} in ${Math.round(now - start)} ms, worst gap ${Math.round(worst)} ms`)
+        }
+        requestAnimationFrame(sample)
+      }
       return new Promise<HandedOverVideo>((resolve) =>
         setTimeout(
-          () =>
+          () => {
+            upgradeQuality()
             resolve({
               video: handed,
               release: () => {
+                box.style.willChange = ''
                 engine?.destroy()
                 box.remove()
               },
-            }),
+            })
+          },
           EXPAND_MS
         )
       )
