@@ -1,4 +1,4 @@
-// The L3 reference build's palette and geometry, verbatim (colours as 0xRRGGBBAA).
+// The app's palette and geometry (colours as 0xRRGGBBAA).
 export const colors = {
   background: 0x0b0e17ff,
   accent: 0x8b6cffff,
@@ -11,7 +11,6 @@ export const colors = {
   navPill: 0x2a3350ff,
   monogram: 0x39415cff,
   focusRing: 0xf5f7ffff,
-  loader: 0x94a3b8ff,
 } as const
 
 export const layout = {

@@ -1,10 +1,7 @@
 .DS_Store
 node_modules/
 dist/
-.env
-.env.*
-!.env.example
-.claude/
-.vercel
-.env*
 tizen-build/
+.claude/
+.env*
+!.env.example

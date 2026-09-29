@@ -35,7 +35,7 @@ const textTransition = { alpha: { duration: 300 } } as const
 const BG_OPAQUE = 0x0b0e17ff
 const BG_CLEAR = 0x0b0e1700
 
-// The hero banner, after the Apple TV app's: full-bleed artwork per item, a title block with Play
+// The hero banner, in the style of Apple's TV app: full-bleed artwork per item, a title block with Play
 // and watchlist buttons, and page dots bottom right. The active dot stretches into a pill that
 // fills as the item's preview plays; when it is full the next item slides in (Home drives the
 // cycle and the preview; this component only draws the state it is given). The preview video

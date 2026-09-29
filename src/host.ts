@@ -1,7 +1,5 @@
-// The Samsung (Tizen) host: the seam between the shared SolidTV app and the TV.
-//
-// Everything Samsung-specific lives here, so src/pages and src/components stay the same as the
-// SolidTV reference app:
+// The Samsung (Tizen) host: everything that touches the TV platform directly, behind the
+// AppHost interface (host.types.ts) that the pages and components use:
 // - remote keys: Tizen only delivers the media keys (play/pause, stop, FF/RW) to apps that
 //   register them, and its Back key is keyCode 10009 rather than Escape/Backspace;
 // - the player: a <video> over the WebGL canvas with its own on-screen controls (title,
@@ -215,7 +213,6 @@ function tizenPlayer(): AppPlayer {
   }
   return {
     canPlay(stream) {
-      if (stream.fairplay) return false
       if (!stream.drm) return true
       return hasEme && 'com.widevine.alpha' in stream.drm
     },
@@ -346,8 +343,10 @@ function tizenPlayer(): AppPlayer {
           lastWall = now
         }, 2000)
       }
-      for (const name of ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled', 'pause', 'error', 'emptied']) {
-        element.addEventListener(name, () => console.log(`VIDEO ${name} t=${element.currentTime.toFixed(1)} rs=${element.readyState} ns=${element.networkState} err=${element.error?.code ?? ''}`))
+      if (import.meta.env.VITE_LOG_URL) {
+        for (const name of ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled', 'pause', 'error', 'emptied']) {
+          element.addEventListener(name, () => console.log(`VIDEO ${name} t=${element.currentTime.toFixed(1)} rs=${element.readyState} ns=${element.networkState} err=${element.error?.code ?? ''}`))
+        }
       }
       // Try the candidates in order; a failure to start moves on to the next, a failure of the
       // last one closes the player.
@@ -442,10 +441,6 @@ function tizenPlayer(): AppPlayer {
   }
 }
 
-// The tile preview: a <video> placed exactly over the expanded tile (the canvas cannot draw a
-// video without copying every frame into a texture, too heavy for a TV). Quality is capped at
-// 480p, so a 460x330 preview never pulls the 1080p variant. It is
-// hidden until the first frame plays; the expanded tile is black until then.
 /** A preview's hls.js engine, as far as quality control needs it. */
 interface QualityEngine {
   autoLevelCapping: number
@@ -479,6 +474,10 @@ function upgradeQuality(engine: QualityEngine | undefined): void {
 const EXPAND_MS = 400
 const EXPAND_EASE = 'cubic-bezier(.3,.8,.3,1)'
 
+// The tile preview: a <video> placed exactly over the expanded tile (the canvas cannot draw a
+// video without copying every frame into a texture, too heavy for a TV). Quality is capped at
+// 480p, so a 460x330 preview never pulls the 1080p variant. It is hidden until the first frame
+// plays; the expanded tile is black until then.
 function tizenPreview(): AppPreview {
   let video: HTMLVideoElement | undefined
   let frame: HTMLDivElement | undefined

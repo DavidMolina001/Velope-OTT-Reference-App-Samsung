@@ -73,9 +73,8 @@ const Details: Component = () => {
     later(150, () => setPressedIndex(-1))
     if (buttonIndex() === 0) {
       if (host.player) {
-        // Each runtime picks the first stream it can play: Widevine DASH on the web, FairPlay
-        // HLS on Apple TV, clear HLS where neither works or the DRM one fails to start.
-        // The Samsung player owns the remote while it is up (see host.ts).
+        // The player picks the first stream of STREAMS it can play (see state/playback.ts) and
+        // owns the remote while it is up (see host.ts).
         setPlaying(true)
         host.player.play(STREAMS, () => setPlaying(false), title())
       } else {
@@ -87,8 +86,7 @@ const Details: Component = () => {
     }
     return handled(e)
   }
-  // Back/Menu here is handled: it stops playback if any, otherwise returns to the grid with
-  // Home's state intact.
+  // Back stops playback if any, otherwise returns to the grid with Home's state intact.
   const onBack: KeyHandler = (e) => {
     if (playing()) {
       host.player?.stop()

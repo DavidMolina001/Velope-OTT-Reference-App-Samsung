@@ -1,8 +1,7 @@
 // Row collections and row assembly. 12 fixed collections (sort/decade variations) applied to
 // any genre. Each row is exactly ONE discover page (20 titles) and never fetches again: the
-// carousel loops that set (the product direction David gave on 2026-09-22, as in the LNG2
-// build). The L3 fetch-ahead machinery (extendRowItems, nextPage, exhausted) is kept but a row
-// is born exhausted, so it is inert unless ROW_PAGES is raised again.
+// carousel loops that set. The fetch-ahead machinery (extendRowItems, nextPage, exhausted) is
+// kept but a row is born exhausted, so it is inert unless ROW_PAGES is raised again.
 import { discoverMovies, type Movie } from './tmdb'
 
 export interface RowItem extends Movie {

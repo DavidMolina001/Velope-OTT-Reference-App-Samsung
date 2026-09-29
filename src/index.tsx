@@ -43,7 +43,7 @@ console.log(`RUNTIME ${host.platform} ${describeRuntime()}`)
 Config.fontSettings.fontFamily = 'lato'
 Config.fontSettings.fontSize = 32
 Config.fontSettings.color = colors.textPrimary
-// Coalesce held-key repeats so navigation never floods the render loop (same 100 ms as L3)
+// Coalesce held-key repeats so navigation never floods the render loop.
 Config.throttleInput = 100
 Config.rendererOptions = {
   appWidth: layout.width,
@@ -51,18 +51,18 @@ Config.rendererOptions = {
   // Transparent: the body's CSS background shows through, and so does the hero video behind it.
   clearColor: 0x00000000,
   numImageWorkers: 0,
-  // Frame telemetry only when the counter is shown (?fps=1 on the web)
+  // Frame telemetry only when the counter is shown (?fps=1 in the URL, e.g. in a desktop browser)
   fpsUpdateInterval: host.showFps ? 300 : 0,
   fontEngines: [SdfTextRenderer],
   renderEngine: WebGlCoreRenderer,
-  // Hard ceiling for texture memory (L3: gpuMemory.max 160 MB, target 0.8); the renderer
-  // evicts least-recently-used off-screen textures on top of that.
+  // Hard ceiling for texture memory (160 MB, target 80%); the renderer evicts
+  // least-recently-used off-screen textures on top of that.
   textureMemory: { criticalThreshold: 160e6, targetThresholdLevel: 0.8 },
   ...host.rendererOptions,
 }
 
 // createRenderer's return type covers the DOM renderer too; this app is WebGL-only.
-const created = createRenderer(Config.rendererOptions, host.target)
+const created = createRenderer(Config.rendererOptions)
 const renderer = created.renderer as RendererMain
 const render = created.render
 registerDefaultShaders(renderer.stage.shManager)
@@ -102,23 +102,19 @@ if (logUrl) {
     frames = longTasks = longest = 0
   }, 5000)
 }
-host.onRenderer?.(renderer)
 if (host.showFps) setupFPS({ renderer })
 
 host.loadFonts(renderer.stage, appFonts(host)).then(() => {
   render(() => {
-    useFocusManager(
-      {
-        Left: ['ArrowLeft', 37],
-        Right: ['ArrowRight', 39],
-        Up: ['ArrowUp', 38],
-        Down: ['ArrowDown', 40],
-        Enter: ['Enter', 13],
-        // 10009 is the Samsung remote's Back key
-        Back: ['Backspace', 'Escape', 8, 27, 10009],
-      },
-      host.keyTarget
-    )
+    useFocusManager({
+      Left: ['ArrowLeft', 37],
+      Right: ['ArrowRight', 39],
+      Up: ['ArrowUp', 38],
+      Down: ['ArrowDown', 40],
+      Enter: ['Enter', 13],
+      // 10009 is the Samsung remote's Back key
+      Back: ['Backspace', 'Escape', 8, 27, 10009],
+    })
     return (
       <>
         <App />

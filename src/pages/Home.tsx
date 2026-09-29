@@ -11,7 +11,7 @@ import { CLEAR_STREAM, STREAMS } from '../state/playback'
 import { resolveHost } from '../host'
 import { getGenres, loadImageConfig, isAbortError } from '../services/tmdb'
 import { buildRows, fetchRowItems, fetchRowPage, extendRowItems, MAX_DISCOVER_PAGE, type Row } from '../services/rows'
-import { colors, easing, layout } from '../theme'
+import { easing, layout } from '../theme'
 import { exposeDebug } from '../debug'
 import { exitPromptOpen, setExitPromptOpen } from '../state/exit'
 import { splash, splashHidden } from '../state/boot'
@@ -25,8 +25,8 @@ const { rowStep: ROW_STEP, visibleTiles: VISIBLE_TILES, focusSlot: FOCUS_SLOT } 
 type Phase = 'loading' | 'ready' | 'error'
 type Zone = 'nav' | 'hero' | 'grid'
 
-// The single explicit focus model of the L3 build: which plane has focus, and one remembered
-// column per row. Every visual derives from it; the key handlers (Gate 3) only mutate it.
+// The single explicit focus model: which plane has focus, and one remembered column per row.
+// Every visual derives from it; the key handlers only mutate it.
 interface HomeState {
   phase: Phase
   errorMessage: string
@@ -244,10 +244,9 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     navigate('/details')
   }
 
-  // All key handling lives here and only mutates the model. A handled press calls
-  // preventDefault() and returns true (consumed: the tvOS host keeps it in the app); the
-  // one press left unhandled is Back in the nav, the root of the app, so the Siri Remote's
-  // Menu returns to the tvOS Home screen there, and nowhere else.
+  // All key handling lives here and only mutates the model. Every press is handled: it calls
+  // preventDefault() and returns true. Back at the root of the app (nav or hero) opens the
+  // exit dialog rather than leaving the app (see onBack).
   const handled = (e: { preventDefault?: () => void }) => {
     e.preventDefault?.()
     return true
@@ -283,7 +282,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     else moveToRow(Math.min(state.rowIndex + 1, state.rows.length - 1))
     return handled(e)
   }
-  // Hero, Apple style: Left/Right move between Play and the tick; Right from the tick goes to the
+  // Hero: Left/Right move between Play and the tick; Right from the tick goes to the
   // next item and Left from Play to the previous one, looping both ways.
   function stepHero(direction: number): void {
     const count = heroItems().length
@@ -433,14 +432,14 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
           finished = true
           setHeroVideoShowing(false)
           heroPreview?.stop()
-          console.log(`HERO preview finished index=${index}, idle ${Math.round(performance.now() - lastKeyAt)} ms`)
+          if (import.meta.env.VITE_LOG_URL) console.log(`HERO preview finished index=${index}, idle ${Math.round(performance.now() - lastKeyAt)} ms`)
         }
         if (performance.now() - lastKeyAt >= layout.heroIdleBeforeAdvance) stepHero(1)
       }, 300)
     }
     const delay = setTimeout(() => {
       if (!heroPreview) return runProgress()
-      console.log(`HERO preview start index=${index}`)
+      if (import.meta.env.VITE_LOG_URL) console.log(`HERO preview start index=${index}`)
       heroPreview.start(
         CLEAR_STREAM.url,
         () => {
@@ -472,7 +471,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     setPreview(null)
     if (!ready) return
     const timer = setTimeout(() => {
-      console.log(`PREVIEW expand row=${rowIndex} col=${col}`)
+      if (import.meta.env.VITE_LOG_URL) console.log(`PREVIEW expand row=${rowIndex} col=${col}`)
       setPreview({ row: rowIndex, col })
     }, layout.previewDelay)
     onCleanup(() => clearTimeout(timer))

@@ -16,7 +16,7 @@ const Root: Component<ParentProps> = (props) => (
 )
 
 // Home is kept alive across navigation so the whole focus model and loaded rows survive a trip
-// to the details page (back-with-state at zero cost), as the L3 build's keepAlive route does.
+// to the details page (back-with-state at zero cost).
 const App: Component = () => (
   <HashRouter root={Root}>
     <KeepAliveRoute id="home" path="/" component={Home} />

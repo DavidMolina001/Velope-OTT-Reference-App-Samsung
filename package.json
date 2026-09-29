@@ -1,8 +1,9 @@
 {
   "name": "velope-ott-reference-app-samsung",
-  "version": "0.1.0",
+  "version": "1.4.2",
   "private": true,
-  "description": "Velope OTT Developer Test reference app for Samsung TVs (Tizen): the SolidTV app (SolidJS + Lightning 3 renderer) with Samsung remote keys and on-screen player controls",
+  "license": "MIT",
+  "description": "Reference streaming app for Samsung TVs (Tizen): SolidJS on the Lightning 3 renderer, with Samsung remote keys, video previews and an on-screen player, packaged as a Tizen web app",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

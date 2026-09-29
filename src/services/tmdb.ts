@@ -1,13 +1,13 @@
-// TMDB access. Ported from the L3 reference build: every request carries a timeout (8 s) plus
-// the caller's abort signal, responses are cached in a promise map (in-flight requests dedupe;
-// failures are evicted so retry refetches), and poster URLs are built from /configuration,
-// choosing the smallest size that covers the on-screen width.
+// TMDB access: every request carries a timeout (8 s) plus the caller's abort signal, responses
+// are cached in a promise map (in-flight requests dedupe; failures are evicted so retry
+// refetches), and poster URLs are built from /configuration, choosing the smallest size that
+// covers the on-screen width.
 //
-// Runtime notes (both targets run this file unchanged):
-// - No `URL`/`URLSearchParams`: query strings are built by hand so the code does not depend on
-//   which WHATWG globals the NativeScript runtime installs.
+// Runtime notes: a Samsung TV's web engine is an older Chromium, so nothing here assumes the
+// newest globals.
+// - Query strings are built by hand rather than with `URL`/`URLSearchParams`.
 // - `AbortSignal.any`/`AbortSignal.timeout` are used when present and replaced by a small
-//   AbortController + setTimeout composition when not (NativeScript V8 lacks both).
+//   AbortController + setTimeout composition when not.
 // - `DOMException` may not exist: abort errors are recognised by name.
 
 const BASE_URL = import.meta.env.VITE_TMDB_BASE_URL ?? 'https://api.themoviedb.org'
@@ -96,11 +96,8 @@ function abortError(name: string, message: string): Error {
   return error
 }
 
-// One JSON GET, through XMLHttpRequest on both targets. NativeScript's fetch polyfill builds
-// its Response from `xhr.response`, which its XHR has already parsed into an object for JSON
-// content types, so `response.json()` there fails with '"[object Object]" is not valid JSON'.
-// XHR with responseType 'json' returns the parsed object on both runtimes, and `xhr.abort()`
-// honours the composed signal the same way fetch would.
+// One JSON GET, through XMLHttpRequest: responseType 'json' hands back the parsed object, and
+// `xhr.abort()` honours the composed signal the same way fetch would.
 function requestJson<T>(url: string, signal: AbortSignal): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -207,7 +204,7 @@ export function isAbortError(error: unknown): boolean {
   return name === 'AbortError' || name === 'TimeoutError'
 }
 
-// What this runtime provides, logged once at boot (the tvOS answer goes into NOTES.md).
+// Which of the globals above the TV's web engine provides, logged once at boot.
 export function describeRuntime(): string {
   const Signal = typeof AbortSignal === 'undefined' ? undefined : (AbortSignal as { any?: unknown; timeout?: unknown })
   return [

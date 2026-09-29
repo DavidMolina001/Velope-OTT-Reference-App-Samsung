@@ -1,8 +1,7 @@
 import type { AppHost, SdfFont } from './host'
 
-// The two fonts of the L3 reference build, as pre-generated MSDF atlases (committed; no font
-// tooling runs at build time). Both builds load the same files: the web from public/fonts,
-// tvOS from the copy webpack puts in the app bundle.
+// The app's two fonts, as pre-generated MSDF atlases in public/fonts (committed; no font
+// tooling runs at build time).
 export function appFonts(host: AppHost): SdfFont[] {
   return [
     {

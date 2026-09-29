@@ -1,7 +1,6 @@
-// The runtime seam's types, in a file with no runtime imports so the tvOS boot file can
-// import them without pulling Vite's ambient types into the NativeScript typecheck.
-import type { RendererMain, RendererMainSettings, Stage } from '@solidtv/renderer'
-import type { KeyEventTarget } from '@solidtv/solid'
+// The host interface: what the pages and components need from the TV (player, previews, fonts,
+// exit), implemented for Samsung Tizen in host.ts. Types only, no runtime code.
+import type { RendererMainSettings, Stage } from '@solidtv/renderer'
 import type { Stream } from './state/playback'
 
 export interface SdfFont {
@@ -57,12 +56,12 @@ export interface AppHeroPreview {
   handOver(): HandedOverVideo | undefined
 }
 
-/** Full-screen playback of one stream, native to each runtime. */
+/** Full-screen playback of one stream. */
 export interface AppPlayer {
-  /** Whether this runtime can play the stream's container and DRM (decided before trying). */
+  /** Whether the TV can play the stream's container and DRM (decided before trying). */
   canPlay(stream: Stream): boolean
   /**
-   * Plays the first stream of `streams` this runtime can play, full screen, falling back to the
+   * Plays the first stream of `streams` the TV can play, full screen, falling back to the
    * next when a stream fails to start (e.g. no CDM for its DRM). `onClosed` fires when playback
    * ends, every candidate failed, or the user leaves it.
    */
@@ -74,27 +73,21 @@ export interface AppPlayer {
 }
 
 export interface AppHost {
-  /** Always 'tizen' in this Samsung build. */
+  /** The platform the host runs on; this app only has the Tizen host. */
   platform: 'tizen'
-  /** Show the FPS counter (web: ?fps=1, as in the L3 build). */
+  /** Show the FPS counter (?fps=1 in the URL). */
   showFps?: boolean
-  /** Renderer settings the host requires (canvas, pixel ratios, platform). Merged under the app's own. */
+  /** Renderer settings the host requires (pixel ratios). Merged under the app's own. */
   rendererOptions: Partial<RendererMainSettings>
-  /** Where the renderer appends its canvas; undefined means document.body. */
-  target?: HTMLElement
-  /** Where the focus manager listens for keydown/keyup; undefined means `document`. */
-  keyTarget?: KeyEventTarget
-  /** Resolves an asset path relative to public/ (or the bundle) to a URL the renderer can fetch. */
+  /** Resolves an asset path relative to public/ to a URL the renderer can fetch. */
   assetUrl(path: string): string
   /** Registers the MSDF fonts. Resolves once text nodes may be created. */
   loadFonts(stage: Stage, fonts: SdfFont[]): Promise<void>
-  /** Called once the renderer exists. */
-  onRenderer?(renderer: RendererMain): void
-  /** The runtime's video player, when it has one. */
+  /** The full-screen video player. */
   player?: AppPlayer
-  /** The tile preview player, when the runtime has one. */
+  /** The tile preview player. */
   preview?: AppPreview
-  /** The hero banner's background video, when the runtime has one. */
+  /** The hero banner's background video. */
   heroPreview?: AppHeroPreview
   /** Closes the app (Back at the root of the app on the TV). */
   exit?(): void
