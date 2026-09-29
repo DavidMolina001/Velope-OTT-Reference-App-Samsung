@@ -298,7 +298,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     if (state.phase !== 'ready') return handled(e)
     if (state.zone === 'nav') activateGenre()
     else if (state.zone === 'hero') activateHeroButton()
-    else openFocusedMovie()
+    else if (!commitTilePreview()) openFocusedMovie()
     return handled(e)
   }
   // Back: rows -> hero (back to the top), hero or nav -> the exit dialog.
@@ -323,6 +323,33 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
   const [playerOpen, setPlayerOpen] = createSignal(false)
   const [favourites, setFavourites] = createSignal<ReadonlySet<number>>(new Set())
   const heroItem = () => heroItems()[state.heroIndex]
+
+  // OK while a tile's preview is on screen commits to it: the preview grows from the tile into the
+  // full player (0.4 s) and carries on from the same second; Back from that player opens the
+  // title's details page. Before the preview shows, OK opens the details page as usual.
+  function commitTilePreview(): boolean {
+    const tile = preview()
+    const row = state.rows[state.rowIndex]
+    if (!tile || tile.row !== state.rowIndex || !row?.items.length || !host.player || !host.preview?.isShowing()) return false
+    const item = row.items[tile.col % row.items.length]
+    const expanding = host.preview.expandToFull()
+    if (!item || !expanding) return false
+    const player = host.player
+    setPlayerOpen(true)
+    void expanding.then((handed) =>
+      player.play(
+        STREAMS,
+        () => {
+          setPlayerOpen(false)
+          setSelectedMovie({ ...item })
+          navigate('/details')
+        },
+        item.title,
+        handed
+      )
+    )
+    return true
+  }
 
   function activateHeroButton(): void {
     const item = heroItem()
@@ -410,7 +437,8 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     const alive = props.isAlive?.() ?? true
     const rowIndex = state.rowIndex
     const col = state.cols[rowIndex] ?? 0
-    const ready = alive && !exitPromptOpen() && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
+    const ready =
+      alive && !exitPromptOpen() && !playerOpen() && state.phase === 'ready' && state.zone === 'grid' && state.rows[rowIndex]?.status === 'ready'
     setPreview(null)
     if (!ready) return
     const timer = setTimeout(() => {

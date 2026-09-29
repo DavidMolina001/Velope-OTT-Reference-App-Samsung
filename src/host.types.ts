@@ -25,6 +25,13 @@ export interface AppPreview {
   start(url: string, rect: PreviewRect): void
   /** Stops and removes the preview. Safe to call when nothing plays. */
   stop(): void
+  /** Whether the preview's picture is on screen (OK then continues it in the full player). */
+  isShowing(): boolean
+  /**
+   * Grows the playing preview from its tile to full screen and gives it up: it resolves once the
+   * animation ends, with the video for the full player to continue. Undefined when not showing.
+   */
+  expandToFull(): Promise<HandedOverVideo> | undefined
 }
 
 /** A preview's playing video, handed to the full player so playback carries on uninterrupted. */

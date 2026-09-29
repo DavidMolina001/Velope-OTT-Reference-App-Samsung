@@ -441,13 +441,19 @@ function tizenPlayer(): AppPlayer {
 // video without copying every frame into a texture, too heavy for a TV). Quality is capped at
 // 480p, so a 460x330 preview never pulls the 1080p variant. It is
 // hidden until the first frame plays; the expanded tile is black until then.
+/** The tile preview growing into the full player. */
+const EXPAND_MS = 400
+const EXPAND_EASE = 'cubic-bezier(.3,.8,.3,1)'
+
 function tizenPreview(): AppPreview {
   let video: HTMLVideoElement | undefined
   let frame: HTMLDivElement | undefined
+  let showing = false
   let hls: { destroy(): void } | undefined
   let generation = 0
   const stop = () => {
     generation++
+    showing = false
     hls?.destroy()
     hls = undefined
     if (video) {
@@ -487,7 +493,9 @@ function tizenPreview(): AppPreview {
       element.playsInline = true
       element.loop = true
       element.addEventListener('playing', () => {
+        if (current !== generation) return
         box.style.opacity = '1'
+        showing = true
         console.log(`PREVIEW playing ${element.videoWidth}x${element.videoHeight} at ${rect.x},${rect.y} ${rect.width}x${rect.height} muted=${element.muted}`)
       })
       element.addEventListener('timeupdate', () => {
@@ -518,6 +526,48 @@ function tizenPreview(): AppPreview {
       })
     },
     stop,
+    isShowing: () => showing && !!video && !video.paused,
+    expandToFull() {
+      if (!showing || !video || !frame) return undefined
+      const handed = video
+      const box = frame
+      const engine = hls
+      // Detach first: from here stop() no longer touches it, whatever the page does meanwhile.
+      generation++
+      showing = false
+      video = undefined
+      frame = undefined
+      hls = undefined
+      console.log(`PREVIEW expanding to full screen at t=${handed.currentTime.toFixed(1)}`)
+      // Full screen now: lift the preview's 480p cap, and switch at the next fragment (hls.js
+      // flushes the 480p it has already buffered ahead; otherwise that would play out first).
+      const levels = engine as { autoLevelCapping?: number; nextLevel?: number; config?: { maxBufferLength?: number } } | undefined
+      if (levels) {
+        levels.autoLevelCapping = -1
+        if (levels.config) levels.config.maxBufferLength = 30
+        levels.nextLevel = -1
+      }
+      const bar = box.lastElementChild as HTMLElement | null
+      if (bar) bar.style.display = 'none'
+      box.style.zIndex = '9'
+      box.style.transition = `left ${EXPAND_MS}ms ${EXPAND_EASE},top ${EXPAND_MS}ms ${EXPAND_EASE},width ${EXPAND_MS}ms ${EXPAND_EASE},height ${EXPAND_MS}ms ${EXPAND_EASE},border-radius ${EXPAND_MS}ms`
+      handed.style.objectFit = 'contain'
+      void box.offsetWidth
+      Object.assign(box.style, { left: '0px', top: '0px', width: '100%', height: '100%', borderRadius: '0px' })
+      return new Promise<HandedOverVideo>((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              video: handed,
+              release: () => {
+                engine?.destroy()
+                box.remove()
+              },
+            }),
+          EXPAND_MS
+        )
+      )
+    },
   }
 }
 
