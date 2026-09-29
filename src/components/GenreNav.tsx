@@ -2,7 +2,8 @@ import { For, type Component } from 'solid-js'
 import { colors, layout } from '../theme'
 
 export interface NavGenre {
-  id: number | null
+  /** A TMDB genre id, null for All, or 'favourites' for the saved list. */
+  id: number | null | 'favourites'
   name: string
 }
 
@@ -13,6 +14,10 @@ interface Props {
   navFocused: boolean
 }
 
+// Six entries (All, four genres, Favourites) fit between the logo and the right edge.
+const ITEM_STEP = 240
+const ITEM_WIDTH = 220
+
 const pillTransition = { x: { duration: 150 }, alpha: { duration: 150 } } as const
 
 const GenreNav: Component<Props> = (props) => (
@@ -22,20 +27,20 @@ const GenreNav: Component<Props> = (props) => (
     </text>
     <view x={420} y={40}>
       <view
-        width={260}
+        width={ITEM_WIDTH}
         height={64}
         borderRadius={32}
         color={colors.navPill}
-        x={props.focusedIndex * 280}
+        x={props.focusedIndex * ITEM_STEP}
         alpha={props.navFocused ? 1 : 0}
         transition={pillTransition}
       />
       <For each={props.genres}>
         {(genre, index) => (
           <text
-            x={index() * 280}
+            x={index() * ITEM_STEP}
             y={15}
-            width={260}
+            width={ITEM_WIDTH}
             contain="width"
             textAlign="center"
             fontSize={30}
