@@ -81,7 +81,7 @@ const ExitDialog: Component = () => {
           onDown={swallow}
         >
           <text x={PANEL_WIDTH / 2} y={70} mountX={0.5} fontFamily="raleway" fontSize={46} color={colors.textPrimary}>
-            Exit Velope TV?
+            Exit Reference App?
           </text>
           <text x={PANEL_WIDTH / 2} y={140} mountX={0.5} fontSize={28} color={colors.textSecondary}>
             You can open it again from Apps.

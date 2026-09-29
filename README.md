@@ -1,4 +1,4 @@
-# Velope TV Reference (Samsung / Tizen)
+# Reference App (Samsung / Tizen)
 
 The Velope OTT Developer Test reference app for **Samsung TVs**. It is the SolidTV reference
 app (SolidJS driving the Lightning 3 WebGL renderer, genre nav, 12 infinitely looping carousel
@@ -30,7 +30,7 @@ unchanged apart from two small hooks:
   so no audio file ships. It stays at least 2.8 s and fades once the app is ready.
 - **Icon.** `tizen/icon.png` is the DMP wordmark (512 px, rendered from the app's Raleway).
 - **Packaging.** Vite builds with relative asset URLs (`base: './'`) because the packaged app loads
-  from the TV's filesystem. `tizen/config.xml` declares the app (id `VelSamsung.VelopeTV`) and its
+  from the TV's filesystem. `tizen/config.xml` declares the app (shown as "Reference App"; internal id `VelSamsung.VelopeTV`, kept so updates replace the installed app) and its
   privileges (internet, TV input device, DRM playback).
 
 ## Samsung TV
@@ -43,7 +43,7 @@ certificate includes the TV's DUID.
 pnpm install
 cp .env.example .env        # then add your TMDB key (below)
 pnpm tizen                  # build + package + install + launch on the TV
-pnpm tizen:package          # build + package only: tizen-build/VelopeTV.wgt
+pnpm tizen:package          # build + package only: tizen-build/ReferenceApp.wgt
 ```
 
 `scripts/tizen.sh` reads `TV_IP` (default 192.168.1.216), `TIZEN_PROFILE` (default `Ellery`) and
@@ -92,7 +92,7 @@ screen with a message telling you exactly this.
 | Back | Escape / Backspace | Grid → nav → exit dialog; details → back to the grid with state intact |
 | Exit | | Exit dialog, from anywhere (closes the player first) |
 
-The exit dialog asks "Exit Velope TV?" with focus on No: Left/Right choose, OK confirms, Back
+The exit dialog asks "Exit Reference App?" with focus on No: Left/Right choose, OK confirms, Back
 cancels and returns focus to where it was. Yes closes the app; reopen it from the TV's Apps list.
 
 Browsing behaviour:
