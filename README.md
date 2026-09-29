@@ -11,7 +11,7 @@ SolidJS on the Lightning 3 WebGL renderer, packaged as a Tizen web app and drive
 </p>
 
 <p align="center"><img src="docs/media/demo.gif" width="720" alt="Demo: splash, hero banner preview, rows, a tile preview growing into the player, details page, exit dialog"></p>
-<p align="center"><sub>The app running in Chrome at 1920 × 1080: splash, hero preview, rows, a tile preview growing into the player, details, exit dialog.<br>Full quality: <a href="docs/media/demo-1080p.mp4">1080p MP4</a> (7 MB).</sub></p>
+<p align="center"><sub>Captured in a desktop browser at TV size: splash, hero preview, rows, a tile preview growing into the player, details, exit dialog. A <a href="docs/media/demo-1080p.mp4">1080p MP4</a> of the same walkthrough is in docs/media.</sub></p>
 
 ## Contents
 
