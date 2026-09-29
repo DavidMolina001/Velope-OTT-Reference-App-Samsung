@@ -5,6 +5,9 @@ app (SolidJS driving the Lightning 3 WebGL renderer, genre nav, 12 infinitely lo
 rows, details, DRM playback) copied from `Velope-OTT-Reference-App-SolidTV` and made
 Samsung-specific. The Apple TV (NativeScript) parts were left out.
 
+The full user flow (every screen and where each remote button leads) is in `docs/user-flow.html`
+(shared page: https://claude.ai/artifact/FaW71BFj8i9dG5qyy4mmoU).
+
 ## What is Samsung-specific
 
 All of it lives in `src/host.ts` (plus `tizen/` and `scripts/tizen.sh`); pages and components are

@@ -1,0 +1,296 @@
+<title>Velope TV User Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Raleway:wght@700;800&family=Lato:wght@400;700&display=swap">
+<style>
+/* Layout: one reading column; a sticky screen index; each screen is a section with a remote-action table. */
+:root {
+  /* The Samsung app's own palette and fonts: one deliberate dark look, like the TV screen. */
+  --bg: #0b0e17;
+  --surface: #151a28;
+  --surface-2: #1c2233;
+  --line: #2a3350;
+  --fg: #f2f5ff;
+  --fg-2: #c7cee0;
+  --fg-3: #8a93ad;
+  --accent: #8b6cff;
+  --accent-soft: rgba(139, 108, 255, 0.16);
+  --go: #7fd6a8;
+  --warn: #ffb86b;
+  --display: 'Raleway', 'Helvetica Neue', Arial, sans-serif;
+  --body: 'Lato', 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 52px); letter-spacing: 0.01em; line-height: 1.1; }
+h1 .p { color: var(--accent); }
+h2 { font-size: 26px; margin-block: 0 6px; }
+h3 { font-size: 18px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--fg-3); margin: 0 0 12px; }
+.lede { color: var(--fg-2); max-width: 65ch; margin: 16px 0 0; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--fg-2); border: 1px solid var(--line); }
+.chip.accent { background: var(--accent-soft); color: var(--fg); border-color: transparent; }
+section { margin-top: 56px; }
+.sub { color: var(--fg-2); margin: 0 0 18px; max-width: 70ch; }
+
+.index { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; margin-top: 32px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; }
+.index a { font-size: 13px; color: var(--fg-2); text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); }
+.index a:hover, .index a:focus-visible { color: var(--fg); border-color: var(--accent); outline: none; }
+
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; background: transparent; text-align: center; }
+
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.rule { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.rule h3 { font-size: 15px; margin-bottom: 6px; }
+.rule p { margin: 0; color: var(--fg-2); font-size: 14px; }
+
+.screen { scroll-margin-top: 80px; }
+.screen-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.num { font-family: var(--display); font-weight: 800; color: var(--accent); font-size: 14px; letter-spacing: 0.08em; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 620px; }
+th { text-align: left; font-weight: 700; color: var(--fg-3); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+td { padding: 11px 14px; border-top: 1px solid var(--line); vertical-align: top; color: var(--fg-2); }
+tr:first-child td { border-top: 0; }
+td.key { color: var(--fg); font-weight: 700; white-space: nowrap; width: 190px; }
+td.to { white-space: nowrap; width: 170px; }
+td.to a { color: var(--go); text-decoration: none; font-weight: 700; }
+td.to a:hover, td.to a:focus-visible { text-decoration: underline; outline: none; }
+td.to .stay { color: var(--fg-3); }
+.auto { display: inline-block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--warn); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin-right: 6px; vertical-align: 1px; }
+.note { margin-top: 14px; font-size: 14px; color: var(--fg-3); }
+.flag { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.flag ul { margin: 8px 0 0; padding-left: 20px; color: var(--fg-2); }
+.flag li + li { margin-top: 6px; }
+footer { margin-top: 64px; color: var(--fg-3); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Samsung TV (Tizen) · version 1.3.1 · 29 September 2026</p>
+  <h1>Velope TV user flow<span class="p">.</span></h1>
+  <p class="lede">Every screen of the Samsung TV reference app and, for each button on the remote, where it takes you. It describes the build installed on the test TV today. Features that were tried and removed (saved favourites list, static launch image) are not part of it.</p>
+  <div class="meta">
+    <span class="chip accent">SolidJS on the Lightning 3 renderer</span>
+    <span class="chip">Samsung UE43U7020 · Tizen 10</span>
+    <span class="chip">Video: Big Buck Bunny (HLS)</span>
+  </div>
+
+  <nav class="index" aria-label="Screens">
+    <a href="#overview">Overview</a>
+    <a href="#rules">Rules</a>
+    <a href="#launch">1 Launch</a>
+    <a href="#hero">2 Hero</a>
+    <a href="#menu">3 Menu</a>
+    <a href="#rows">4 Rows</a>
+    <a href="#tile">5 Tile preview</a>
+    <a href="#details">6 Details</a>
+    <a href="#player">7 Player</a>
+    <a href="#exit">8 Exit dialog</a>
+    <a href="#error">9 Error</a>
+  </nav>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <p class="sub">Home is one screen with three focus areas (menu, hero, rows). Arrows show the main moves; each screen below lists every button.</p>
+    <div class="diagram">
+<pre class="mermaid">
+%%{init: {'theme':'dark','themeVariables':{'primaryColor':'#1c2233','primaryTextColor':'#f2f5ff','primaryBorderColor':'#8b6cff','lineColor':'#8a93ad','fontFamily':'Lato, Arial, sans-serif','clusterBkg':'#151a28','clusterBorder':'#2a3350'}}}%%
+flowchart LR
+  L["App launch<br/>TV loader, DMP splash"] --> H
+  subgraph HOME["Home"]
+    M["Menu<br/>genres"]
+    H["Hero<br/>banner + preview"]
+    R["Rows<br/>12 looping rows"]
+    T["Tile preview<br/>after 3 s rest"]
+  end
+  H -- Up --> M
+  M -- Down --> H
+  H -- Down --> R
+  R -- "Up from row 1, or Back" --> H
+  R -- "Rest 3 s" --> T
+  T -- "Any arrow" --> R
+  R -- OK --> D["Details page"]
+  T -- "OK before 7 s" --> D
+  T -- "OK after 7 s" --> P["Full player"]
+  H -- "OK on Play" --> P
+  D -- "Play now" --> P
+  D -- Back --> R
+  P -- "Back, from hero" --> H
+  P -- "Back, from details or tile" --> D
+  H -- Back --> X["Exit dialog"]
+  M -- Back --> X
+  X -- "Yes" --> A["TV Apps screen"]
+</pre>
+    </div>
+  </section>
+
+  <section id="rules">
+    <h2>The rules behind it</h2>
+    <p class="sub">Four behaviours hold across every screen.</p>
+    <div class="rules">
+      <div class="rule"><h3>Back steps one level up</h3><p>Player to where you came from, details to rows, rows to hero, hero or menu to the exit dialog.</p></div>
+      <div class="rule"><h3>Exit always asks first</h3><p>The remote's Exit key opens the exit dialog from anywhere, even mid-video. No is preselected.</p></div>
+      <div class="rule"><h3>OK depends on commitment</h3><p>A quick OK on a tile opens details. After 7 s of preview, OK keeps watching. On the hero, Play always plays.</p></div>
+      <div class="rule"><h3>Nothing moves while you press</h3><p>Previews stop the moment you move. The hero only advances after 7 s with no key press.</p></div>
+    </div>
+  </section>
+
+  <section id="launch" class="screen">
+    <div class="screen-head"><span class="num">01</span><h2>App launch</h2></div>
+    <p class="sub">Opened from the TV's Apps screen (Home → Apps → Velope TV).</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key"><span class="auto">Auto</span>On open</td><td>Samsung's own loading dots (the TV's, not the app's).</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key"><span class="auto">Auto</span>App starts</td><td>DMP splash with its chime: "A David Molina production". Shown for at least 2.8 s.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key"><span class="auto">Auto</span>Content loaded</td><td>Splash fades out. Focus starts on the hero's Play button.</td><td class="to"><a href="#hero">→ Hero</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="hero" class="screen">
+    <div class="screen-head"><span class="num">02</span><h2>Home: hero</h2></div>
+    <p class="sub">The large banner at the top: 6 featured titles from the current genre, each with artwork, title, year and rating, description, Play and + buttons, and page dots.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key"><span class="auto">Auto</span>After 1 s</td><td>The preview (Big Buck Bunny) plays behind the text, with sound. The active dot stretches into a pill that fills over 15 s.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key"><span class="auto">Auto</span>Preview ends</td><td>The item stays on screen. The next item comes in only after 7 s with no key press. Loops after the 6th.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Right, on Play</td><td>Focus moves to the + button.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Right, on +</td><td>Next hero item.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Left, on +</td><td>Focus back to Play.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Left, on Play</td><td>Previous hero item.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">OK, on Play</td><td>Full-screen playback. If the preview was playing, it carries on from the same second; otherwise it starts at 0:00.</td><td class="to"><a href="#player">→ Full player</a></td></tr>
+        <tr><td class="key">OK, on +</td><td>+ becomes a tick. Remembered until the app closes.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Up</td><td>Focus to the genre menu.</td><td class="to"><a href="#menu">→ Menu</a></td></tr>
+        <tr><td class="key">Down</td><td>The hero slides away and its video stops; the rows move up.</td><td class="to"><a href="#rows">→ Rows</a></td></tr>
+        <tr><td class="key">Back</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+        <tr><td class="key">Exit key</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="menu" class="screen">
+    <div class="screen-head"><span class="num">03</span><h2>Home: menu</h2></div>
+    <p class="sub">The top bar: VELOPE, All, Action, Adventure, Animation, Comedy.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Left / Right</td><td>Moves the highlight between genres.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">OK</td><td>Loads that genre: the hero and all rows reload. Focus stays in the menu.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Down</td><td>Focus to the hero.</td><td class="to"><a href="#hero">→ Hero</a></td></tr>
+        <tr><td class="key">Back</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+        <tr><td class="key">Exit key</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="rows" class="screen">
+    <div class="screen-head"><span class="num">04</span><h2>Home: rows</h2></div>
+    <p class="sub">12 rows of 20 titles each (Popular, Top Rated, New Releases…). Every row loops forever.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Right</td><td>Focus walks right until the middle tile (4th of 7), then stays there while the row slides. The row never ends.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Left</td><td>Focus walks back to the left edge, then the row slides back down to item 1 and stops there.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Down / Up</td><td>The tile directly below or above on screen, same column.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Up, from row 1</td><td>Back up to the banner.</td><td class="to"><a href="#hero">→ Hero</a></td></tr>
+        <tr><td class="key"><span class="auto">Auto</span>Rest 3 s</td><td>The focused tile widens and its preview starts.</td><td class="to"><a href="#tile">→ Tile preview</a></td></tr>
+        <tr><td class="key">OK</td><td>Opens that title.</td><td class="to"><a href="#details">→ Details page</a></td></tr>
+        <tr><td class="key">Back</td><td>Back to the top of the page.</td><td class="to"><a href="#hero">→ Hero</a></td></tr>
+        <tr><td class="key">Exit key</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="tile" class="screen">
+    <div class="screen-head"><span class="num">05</span><h2>Rows: tile preview</h2></div>
+    <p class="sub">The tile widens to about twice its width and turns black, then Big Buck Bunny plays inside it with sound and a purple progress bar along the bottom. In the middle slot the tile grows to both sides.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Any arrow</td><td>Preview stops, tile shrinks, focus moves as usual.</td><td class="to"><a href="#rows">→ Rows</a></td></tr>
+        <tr><td class="key">OK, under 7 s</td><td>A quick OK means "tell me more": opens the title.</td><td class="to"><a href="#details">→ Details page</a></td></tr>
+        <tr><td class="key">OK, 7 s or more</td><td>The preview grows from the tile into the full player (0.4 s) and carries on from the same second. Back from that player opens the details page.</td><td class="to"><a href="#player">→ Full player</a></td></tr>
+        <tr><td class="key">Back</td><td>Preview stops; back to the top of the page.</td><td class="to"><a href="#hero">→ Hero</a></td></tr>
+        <tr><td class="key">Exit key</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="details" class="screen">
+    <div class="screen-head"><span class="num">06</span><h2>Details page</h2></div>
+    <p class="sub">Poster, title, year, description, and two buttons: Play now and + Add to favourites.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Left / Right</td><td>Moves between Play now and + Add to favourites.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">OK, on Play now</td><td>Full-screen playback from 0:00.</td><td class="to"><a href="#player">→ Full player</a></td></tr>
+        <tr><td class="key">OK, on favourites</td><td>The label changes. Remembered until the app closes.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Back</td><td>Back to the rows, on the same tile at the same position.</td><td class="to"><a href="#rows">→ Rows</a></td></tr>
+        <tr><td class="key">Exit key</td><td>Asks whether to leave the app.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="player" class="screen">
+    <div class="screen-head"><span class="num">07</span><h2>Full player</h2></div>
+    <p class="sub">Full-screen video (up to 1080p). The controls (title, play state, progress bar, times, key guide) appear on any key press and hide after 4 s while playing.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">OK or Play/Pause</td><td>Pause or resume. Controls stay up while paused.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Play · Pause keys</td><td>Play · Pause.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Left / Right</td><td>Back or forward 10 s. A centre badge shows the total (repeat presses add up: +10s, +20s…).</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Rewind / Fast-fwd</td><td>Back or forward 30 s, with the same adding badge.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">Back or Stop</td><td>Closes the player. Opened from the hero: back to the hero. From details or a tile preview: to that title's details page.</td><td class="to"><a href="#hero">→ Hero</a> / <a href="#details">Details</a></td></tr>
+        <tr><td class="key"><span class="auto">Auto</span>Video ends</td><td>Same as Back.</td><td class="to"><span class="stay">as Back</span></td></tr>
+        <tr><td class="key">Exit key</td><td>The player closes, then the app asks whether to leave.</td><td class="to"><a href="#exit">→ Exit dialog</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="exit" class="screen">
+    <div class="screen-head"><span class="num">08</span><h2>Exit dialog</h2></div>
+    <p class="sub">"Exit Velope TV?" with Yes and No. Opened by Back on the hero or menu, or by the Exit key anywhere. No is preselected so a stray press never closes the app.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Left / Right</td><td>Chooses Yes or No.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key">OK, on Yes</td><td>The app closes. Reopen it from the TV's Apps screen.</td><td class="to"><a href="#launch">→ TV Apps / Launch</a></td></tr>
+        <tr><td class="key">OK, on No</td><td>The dialog closes; focus goes back exactly where it was.</td><td class="to"><span class="stay">previous screen</span></td></tr>
+        <tr><td class="key">Back</td><td>Same as No.</td><td class="to"><span class="stay">previous screen</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="error" class="screen">
+    <div class="screen-head"><span class="num">09</span><h2>Error screen</h2></div>
+    <p class="sub">Only when the film data can't load at start (no internet, or TMDB is down).</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
+      <tbody>
+        <tr><td class="key">OK</td><td>Retries loading.</td><td class="to"><a href="#launch">→ Launch</a></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="flag">
+      <h3>Worth confirming with the team</h3>
+      <ul>
+        <li>Back from a player opened from a tile preview goes to the details page, not back to the row.</li>
+        <li>The + / Add to favourites buttons only remember until the app closes; there is no saved favourites list.</li>
+        <li>Every preview and every Play uses the same test video (Big Buck Bunny).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>Velope TV · Samsung TV (Tizen) reference app · version 1.3.1 · A David Molina production.</footer>
+</div>
