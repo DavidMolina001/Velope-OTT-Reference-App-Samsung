@@ -8,6 +8,44 @@ Samsung-specific. The Apple TV (NativeScript) parts were left out.
 The full user flow (every screen and where each remote button leads) is in `docs/user-flow.html`
 (shared page: https://claude.ai/artifact/FaW71BFj8i9dG5qyy4mmoU).
 
+## Before you build: two things you must supply
+
+The repository contains no secrets. To build and run the app you need both of these, and
+neither is in the repo:
+
+1. **A TMDB API key** (free). The app reads its catalogue from The Movie Database. Register at
+   https://developer.themoviedb.org/docs/getting-started, then:
+
+   ```sh
+   cp .env.example .env
+   # edit .env and set VITE_TMDB_API_KEY=<your 32-character v3 key>
+   ```
+
+   Without it the app boots into its error screen saying exactly this. `.env` is git-ignored.
+
+2. **A Samsung signing certificate that includes your TV.** Samsung TVs only install test apps
+   signed with a certificate that lists the TV's own ID (its *DUID*). The certificate is not in the
+   repo and cannot be shared with you; create your own in ~10 minutes:
+   1. Install the Tizen SDK (CLI installer from https://samsungtizenos.com/tools-download/; Tizen
+      Studio is retired) plus the *Samsung Certificate Extension* and *Samsung Tizen TV SDK*
+      packages: `~/tizen-sdk/package-manager/package-manager-cli.bin install --accept-license
+      Certificate-Manager,cert-add-on,TV-SAMSUNG-Public-WebAppDevelopment`.
+   2. Put the TV in Developer Mode: on the TV open **Apps**, type **1 2 3 4 5** on the remote,
+      switch Developer Mode **On**, enter your computer's IP address, and restart the TV.
+   3. Connect and read the TV's DUID:
+      ```sh
+      ~/tizen-sdk/tools/sdb connect <TV IP>
+      ~/tizen-sdk/tools/sdb shell 0 getduid
+      ```
+   4. Open `~/tizen-sdk/tools/certificate-manager/certificate-manager.app`, press **+**, choose
+      **Samsung → TV**, name the profile (say `MyTV`), create an author certificate, sign in with a
+      Samsung account when asked, then create a distributor certificate and make sure the DUID
+      from step 3 is in its device list. Finish.
+   5. Build with your profile name: `TIZEN_PROFILE=MyTV TV_IP=<TV IP> pnpm tizen`.
+
+   Already have a signed `ReferenceApp.wgt` from someone whose certificate lists your TV? Then you
+   only need steps 1–3 and `~/tizen-sdk/tools/ide/bin/tizen install -n ReferenceApp.wgt -s <TV IP>:26101`.
+
 ## What is Samsung-specific
 
 All of it lives in `src/host.ts` (plus `tizen/` and `scripts/tizen.sh`); pages and components are
@@ -35,9 +73,9 @@ unchanged apart from two small hooks:
 
 ## Samsung TV
 
-Requires the Tizen SDK (`~/tizen-sdk`, CLI installer; Tizen Studio is retired), the TV in
-Developer Mode pointing at this computer's IP, and a Samsung signing profile whose distributor
-certificate includes the TV's DUID.
+Requires the Tizen SDK, the TV in Developer Mode pointing at this computer's IP, a TMDB key in
+`.env` and a Samsung signing profile whose distributor certificate includes the TV's DUID; see
+**Before you build** above for all four.
 
 ```sh
 pnpm install
@@ -46,8 +84,9 @@ pnpm tizen                  # build + package + install + launch on the TV
 pnpm tizen:package          # build + package only: tizen-build/ReferenceApp.wgt
 ```
 
-`scripts/tizen.sh` reads `TV_IP` (default 192.168.1.216), `TIZEN_PROFILE` (default `Ellery`) and
-`TIZEN_SDK` (default `~/tizen-sdk`) from the environment.
+`scripts/tizen.sh` reads `TV_IP` (default 192.168.1.216), `TIZEN_PROFILE` (the signing profile
+name from Certificate Manager; the default `Ellery` is the original author's and will not exist on
+your machine, so set your own) and `TIZEN_SDK` (default `~/tizen-sdk`) from the environment.
 
 On macOS, `sdb` is a background process the Local Network privacy setting can silently block. If
 the TV answers but `sdb connect` fails, start sdb once from the Terminal app.
