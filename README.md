@@ -94,16 +94,9 @@ cancels and returns focus to where it was. Yes closes the app; reopen it from th
 
 Browsing behaviour:
 
-- **Favourites** (`state/favourites.ts`): the hero's **+** button and the details page's button
-  add or remove a title; the hero button then shows a tick (drawn, `Tick.tsx`: the MSDF fonts
-  have no ✓ glyph). The list is saved in localStorage (it survives closing and reinstalling the
-  app) and shown by the menu's **Favourites** entry: one "Your favourites" row, newest first,
-  with the hero cycling through them, or "No favourites yet" when empty. The row follows the list
-  live.
-
 - **Hero banner** (`HeroBanner.tsx`, cycle in `Home.tsx`), after the Apple TV app's: the first 6
   titles with wide artwork from the current genre's first row, each with its backdrop, title,
-  year and rating, synopsis, **Play** and a **+** favourites button (a tick once added), and page dots. One second
+  year and rating, synopsis, **Play** and a watchlist **+ / ✓** button, and page dots. One second
   after the hero shows, Big Buck Bunny plays full screen *behind* the canvas (the canvas is
   see-through, `clearColor` 0, body background in CSS) with sound; the artwork fades out and the
   gradients, text and buttons stay on top. The active dot stretches into a pill that fills over
