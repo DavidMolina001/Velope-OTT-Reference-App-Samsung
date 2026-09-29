@@ -10,8 +10,7 @@ import HeroBanner from '../components/HeroBanner'
 import { CLEAR_STREAM, STREAMS } from '../state/playback'
 import { resolveHost } from '../host'
 import { getGenres, loadImageConfig, isAbortError } from '../services/tmdb'
-import { buildRows, buildFavouritesRows, fetchRowItems, fetchRowPage, extendRowItems, FAVOURITES_ID, MAX_DISCOVER_PAGE, type Row } from '../services/rows'
-import { favourites, isFavourite, toggleFavourite } from '../state/favourites'
+import { buildRows, fetchRowItems, fetchRowPage, extendRowItems, MAX_DISCOVER_PAGE, type Row } from '../services/rows'
 import { colors, easing, layout } from '../theme'
 import { exposeDebug } from '../debug'
 import { exitPromptOpen, setExitPromptOpen } from '../state/exit'
@@ -70,13 +69,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     heroButton: 0,
   })
 
-  const activeNavId = () => state.genres[state.activeGenreIndex]?.id ?? null
-  const showingFavourites = () => activeNavId() === FAVOURITES_ID
-  /** The TMDB genre for the row requests (never called while Favourites is showing). */
-  const activeGenreId = () => {
-    const id = activeNavId()
-    return typeof id === 'number' ? id : null
-  }
+  const activeGenreId = () => state.genres[state.activeGenreIndex]?.id ?? null
 
   // Only rows in or near the viewport exist; off-screen rows are destroyed with their textures
   const visibleRows = createMemo(() => {
@@ -89,7 +82,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     inflight = new AbortController()
     try {
       const [genreList] = await Promise.all([getGenres(inflight.signal), loadImageConfig(inflight.signal)])
-      setState('genres', [{ id: null, name: 'All' }, ...genreList.slice(0, NAV_GENRE_COUNT), { id: FAVOURITES_ID, name: 'Favourites' }])
+      setState('genres', [{ id: null, name: 'All' }, ...genreList.slice(0, NAV_GENRE_COUNT)])
       applyGenre()
       await loadRow(0)
       setState({ phase: 'ready', zone: 'hero' })
@@ -103,7 +96,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
   function applyGenre(): void {
     inflight.abort()
     inflight = new AbortController()
-    const rows = showingFavourites() ? buildFavouritesRows(favourites()) : buildRows(activeGenreId())
+    const rows = buildRows(activeGenreId())
     setState({ rows, cols: rows.map(() => 0), scrolls: rows.map(() => 0), rowIndex: 0, heroIndex: 0, heroButton: 0 })
   }
 
@@ -195,20 +188,6 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
 
   createEffect(on(() => state.rowIndex, (index) => loadRowsAround(index), { defer: true }))
 
-  // The Favourites view follows the list live: adding or removing a title (from the hero or the
-  // details page) rebuilds its row, keeping focus within range.
-  createEffect(
-    on(favourites, (list) => {
-      if (!showingFavourites()) return
-      const [row] = buildFavouritesRows(list)
-      setState('rows', 0, { items: row!.items })
-      const last = Math.max(0, list.length - 1)
-      if ((state.cols[0] ?? 0) > last) setState('cols', 0, last)
-      if ((state.scrolls[0] ?? 0) > last) setState('scrolls', 0, Math.max(0, last - FOCUS_SLOT))
-      if (list.length === 0 && state.zone !== 'nav') setState('zone', 'nav')
-    }, { defer: true })
-  )
-
   // Back from details: the cached page is re-shown, not re-created, so autofocus does not run
   // again; focus is put back on the root explicitly, after the router has re-attached it.
   createEffect(
@@ -221,10 +200,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     )
   )
 
-  onMount(() => {
-    if (import.meta.env.VITE_LOG_URL) console.log(`FAVOURITES loaded ${favourites().length}`)
-    void boot()
-  })
+  onMount(() => void boot())
   onCleanup(() => inflight.abort())
 
   function openFocusedMovie(): void {
@@ -335,18 +311,18 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
   const [heroProgress, setHeroProgress] = createSignal(0)
   const [heroVideoShowing, setHeroVideoShowing] = createSignal(false)
   const [playerOpen, setPlayerOpen] = createSignal(false)
+  const [favourites, setFavourites] = createSignal<ReadonlySet<number>>(new Set())
   const heroItem = () => heroItems()[state.heroIndex]
-  // The hero list can shrink (a favourite removed while its view shows): keep the index valid.
-  createEffect(() => {
-    const count = heroItems().length
-    if (count > 0 && state.heroIndex >= count) setState('heroIndex', 0)
-  })
 
   function activateHeroButton(): void {
     const item = heroItem()
     if (!item) return
     if (state.heroButton === 1) {
-      toggleFavourite(item)
+      const next = new Set(favourites())
+      if (next.has(item.id)) next.delete(item.id)
+      else next.add(item.id)
+      setFavourites(next)
+      if (import.meta.env.VITE_LOG_URL) console.log(`HERO watchlist ${item.title} ${next.has(item.id) ? 'added' : 'removed'}`)
       return
     }
     if (!host.player) return
@@ -457,7 +433,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
         index={state.heroIndex}
         focused={state.zone === 'hero'}
         button={state.heroButton}
-        favourited={(favourites(), !!heroItem() && isFavourite(heroItem()!.id))}
+        favourited={!!heroItem() && favourites().has(heroItem()!.id)}
         progress={heroProgress()}
         videoShowing={heroVideoShowing()}
         visible={state.zone !== 'grid' && hasHero()}
@@ -487,16 +463,6 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
         </view>
       </view>
       <GenreNav genres={state.genres} focusedIndex={state.navIndex} activeIndex={state.activeGenreIndex} navFocused={state.zone === 'nav'} />
-      <Show when={state.phase === 'ready' && showingFavourites() && favourites().length === 0}>
-        <view x={90} y={layout.navHeight + 100} width={0} height={0}>
-          <text fontFamily="raleway" fontSize={48} color={colors.textPrimary}>
-            No favourites yet
-          </text>
-          <text y={80} fontSize={30} color={colors.textSecondary}>
-            Press + on a title to add it here.
-          </text>
-        </view>
-      </Show>
       <Show when={state.phase === 'error'}>
         <ErrorScreen message={state.errorMessage} />
       </Show>

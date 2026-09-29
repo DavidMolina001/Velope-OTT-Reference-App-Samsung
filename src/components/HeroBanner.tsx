@@ -1,7 +1,6 @@
 import { For, Show, type Component } from 'solid-js'
 import { backdropUrl } from '../services/tmdb'
 import type { RowItem } from '../services/rows'
-import Tick from './Tick'
 import { colors, easing, layout } from '../theme'
 
 interface Props {
@@ -9,7 +8,7 @@ interface Props {
   index: number
   /** The hero has focus (its buttons show their focused state). */
   focused: boolean
-  /** Which button has focus: 0 = Play, 1 = favourites (+, a tick once added). */
+  /** Which button has focus: 0 = Play, 1 = the watchlist tick. */
   button: number
   favourited: boolean
   /** How far through the current item's preview (0..1): fills the active page pill. */
@@ -55,10 +54,7 @@ const HeroBanner: Component<Props> = (props) => {
 
   return (
     <view width={layout.width} height={layout.height} y={props.visible ? 0 : -(layout.heroGridTop - layout.navHeight)} alpha={props.visible ? 1 : 0} transition={pageTransition}>
-      {/* Artwork: only the current item and its neighbours load their texture. Wrapped in its own
-          layer: items created later (the list arrives after mount) would otherwise be appended
-          after, i.e. drawn on top of, the gradients below. */}
-      <view width={layout.width} height={layout.height}>
+      {/* Artwork: only the current item and its neighbours load their texture. */}
       <For each={props.items}>
         {(item, i) => {
           const near = () => Math.abs(i() - props.index) <= 1 || (props.index === props.items.length - 1 && i() === 0)
@@ -74,7 +70,6 @@ const HeroBanner: Component<Props> = (props) => {
           )
         }}
       </For>
-      </view>
       {/* Legibility: dark from the left behind the text, and a fade into the rows at the bottom. */}
       {/* The shader's angle 0 runs top to bottom and 3π/2 left to right (colors[0] first). */}
       <view width={1400} height={layout.height} linearGradient={{ colors: [BG_OPAQUE, BG_CLEAR], angle: (3 * Math.PI) / 2, stops: [0.1, 1] }} alpha={0.92} />
@@ -115,16 +110,9 @@ const HeroBanner: Component<Props> = (props) => {
                 scale={props.focused && props.button === 1 ? 1.08 : 1}
                 transition={buttonTransition}
               >
-                <Show
-                  when={props.favourited}
-                  fallback={
-                    <text x={40} y={40} mount={0.5} fontSize={44} color={props.focused && props.button === 1 ? 0x0b0e17ff : colors.textPrimary}>
-                      +
-                    </text>
-                  }
-                >
-                  <Tick x={40} y={41} size={42} color={props.focused && props.button === 1 ? 0x0b0e17ff : colors.textPrimary} />
-                </Show>
+                <text x={40} y={40} mount={0.5} fontSize={38} color={props.focused && props.button === 1 ? 0x0b0e17ff : colors.textPrimary}>
+                  {props.favourited ? '✓' : '+'}
+                </text>
               </view>
             </view>
           </view>

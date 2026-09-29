@@ -5,7 +5,6 @@ import ActionButton from '../components/ActionButton'
 import { posterUrl } from '../services/tmdb'
 import { selectedMovie } from '../state/selection'
 import { STREAMS } from '../state/playback'
-import { isFavourite, toggleFavourite, favourites } from '../state/favourites'
 import { resolveHost } from '../host'
 import { colors, layout } from '../theme'
 
@@ -24,7 +23,7 @@ const Details: Component = () => {
   const [buttonIndex, setButtonIndex] = createSignal(0)
   const [pressedIndex, setPressedIndex] = createSignal(-1)
   const [posterLoaded, setPosterLoaded] = createSignal(false)
-  const favourited = () => (favourites(), !!movie && isFavourite(movie.id))
+  const [favourited, setFavourited] = createSignal(false)
   const [playHintVisible, setPlayHintVisible] = createSignal(false)
   const [playing, setPlaying] = createSignal(false)
   const timers = new Set<ReturnType<typeof setTimeout>>()
@@ -51,7 +50,7 @@ const Details: Component = () => {
   const overview = () => movie?.overview || 'No description available.'
   const monogram = () => (movie?.title ?? '?').charAt(0).toUpperCase()
   const posterSrc = () => (movie ? posterUrl(movie.posterPath, POSTER_WIDTH) : undefined)
-  const favouriteLabel = () => (favourited() ? 'Added to favourites' : '+ Add to favourites')
+  const favouriteLabel = () => (favourited() ? 'Remove from favourites' : '+ Add to favourites')
 
   const handled = (e: { preventDefault?: () => void }) => {
     e.preventDefault?.()
@@ -84,7 +83,7 @@ const Details: Component = () => {
         later(1800, () => setPlayHintVisible(false))
       }
     } else {
-      if (movie) toggleFavourite(movie)
+      setFavourited((f) => !f)
     }
     return handled(e)
   }

@@ -72,22 +72,6 @@ export function buildRows(genreId: number | null): Row[] {
   }))
 }
 
-/** The menu's Favourites view: one row of the saved titles (no network needed). */
-export const FAVOURITES_ID = 'favourites'
-export function buildFavouritesRows(favourites: Movie[]): Row[] {
-  return [
-    {
-      id: FAVOURITES_ID,
-      index: 0,
-      title: 'Your favourites',
-      status: 'ready',
-      items: favourites.map((movie, index) => ({ ...movie, key: `fav:${movie.id}`, index })),
-      nextPage: MAX_DISCOVER_PAGE + 1,
-      exhausted: true,
-    },
-  ]
-}
-
 function rowParams(genreId: number | null, rowIndex: number): Record<string, string> {
   const collection = COLLECTIONS[rowIndex]
   if (!collection) throw new Error(`No row collection at index ${rowIndex}`)
