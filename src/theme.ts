@@ -35,6 +35,8 @@ export const layout = {
   /** Hero: rest before its preview starts, and how long each preview plays before advancing. */
   heroPreviewDelay: 1000,
   heroPreviewLength: 15000,
+  /** After its preview, the hero only moves on once the remote has been idle this long. */
+  heroIdleBeforeAdvance: 7000,
   /** Hero items: the first titles with wide artwork from the current genre's first row. */
   heroItemCount: 6,
 } as const

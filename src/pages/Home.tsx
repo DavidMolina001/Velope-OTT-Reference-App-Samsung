@@ -50,6 +50,10 @@ const gridAreaTransition = { y: { duration: 250, easing }, height: { duration: 2
 let inflight = new AbortController()
 const extending = new Set<string>()
 
+// When the viewer last pressed a key (any key, anywhere): the hero waits for idleness to advance.
+let lastKeyAt = 0
+const noteKey = () => (lastKeyAt = performance.now())
+
 // KeepAliveRoute passes isAlive: false while the details page is up, true again on return.
 const Home: Component<{ isAlive?: () => boolean }> = (props) => {
   const navigate = useNavigate()
@@ -200,8 +204,14 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     )
   )
 
-  onMount(() => void boot())
-  onCleanup(() => inflight.abort())
+  onMount(() => {
+    window.addEventListener('keydown', noteKey, true)
+    void boot()
+  })
+  onCleanup(() => {
+    window.removeEventListener('keydown', noteKey, true)
+    inflight.abort()
+  })
 
   function openFocusedMovie(): void {
     const row = state.rows[state.rowIndex]
@@ -349,13 +359,25 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     if (!active) return
     let startedAt = 0
     let ticker: ReturnType<typeof setInterval> | undefined
+    // When the preview has run its length it stops and the item stays (artwork back, pill full).
+    // The carousel only moves on once the remote has been idle for heroIdleBeforeAdvance, so an
+    // item never changes while the viewer is pressing keys; if they were already idle, it moves
+    // on as soon as the preview ends.
+    let finished = false
     const runProgress = () => {
       if (ticker) return
       startedAt = performance.now()
       ticker = setInterval(() => {
-        const progress = Math.min(1, (performance.now() - startedAt) / layout.heroPreviewLength)
-        setHeroProgress(progress)
-        if (progress >= 1) stepHero(1)
+        if (!finished) {
+          const progress = Math.min(1, (performance.now() - startedAt) / layout.heroPreviewLength)
+          setHeroProgress(progress)
+          if (progress < 1) return
+          finished = true
+          heroPreview?.stop()
+          setHeroVideoShowing(false)
+          console.log(`HERO preview finished index=${index}, idle ${Math.round(performance.now() - lastKeyAt)} ms`)
+        }
+        if (performance.now() - lastKeyAt >= layout.heroIdleBeforeAdvance) stepHero(1)
       }, 100)
     }
     const heroPreview = host.heroPreview

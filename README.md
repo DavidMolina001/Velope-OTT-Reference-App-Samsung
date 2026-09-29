@@ -100,7 +100,9 @@ Browsing behaviour:
   after the hero shows, Big Buck Bunny plays full screen *behind* the canvas (the canvas is
   see-through, `clearColor` 0, body background in CSS) with sound; the artwork fades out and the
   gradients, text and buttons stay on top. The active dot stretches into a pill that fills over
-  15 s, then the next item comes in (looping). Left/Right move between Play and the tick; Right
+  15 s; then the preview stops and the item stays. The next item only comes in (looping) once the
+  remote has been idle for 7 s, so the item never changes while the viewer is pressing keys; if
+  they were already idle when the preview ended, it moves on straight away. Left/Right move between Play and the tick; Right
   from the tick is the next item, Left from Play the previous one. Down moves to the rows (the
   hero slides away and its video stops), Up returns; Back from the rows returns to the hero, Back
   on the hero opens the exit dialog. Play opens the full-screen player straight from the hero and, when the preview is playing from
