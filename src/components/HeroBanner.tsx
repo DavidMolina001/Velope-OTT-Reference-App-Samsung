@@ -55,7 +55,8 @@ const HeroBanner: Component<Props> = (props) => {
 
   return (
     <view width={layout.width} height={layout.height} y={props.visible ? 0 : -(layout.heroGridTop - layout.navHeight)} alpha={props.visible ? 1 : 0} transition={pageTransition}>
-      {/* Artwork: only the current item and its neighbours load their texture. Wrapped in its own
+      {/* Artwork: the current item and its neighbours load their texture (preload: an invisible
+          node would otherwise only start loading when it fades in, i.e. at the switch). Wrapped in its own
           layer: items created later (the list arrives after mount) would otherwise be appended
           after, i.e. drawn on top of, the gradients below. */}
       <view width={layout.width} height={layout.height}>
@@ -68,6 +69,7 @@ const HeroBanner: Component<Props> = (props) => {
               height={layout.height}
               color={0xffffffff}
               src={near() ? backdropUrl(item.backdropPath, layout.heroArtWidth) : undefined}
+              textureOptions={{ preload: true }}
               alpha={i() === props.index && !props.videoShowing ? 1 : 0}
               transition={artTransition}
             />

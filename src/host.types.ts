@@ -47,9 +47,6 @@ export interface HandedOverVideo {
 export interface AppHeroPreview {
   /** Plays `url` with sound; `onPlaying` fires once, when the first frame is on screen. */
   start(url: string, onPlaying: () => void, onFailed: () => void): void
-  /** Pauses (while the artwork covers it) and resumes, without restarting the stream. */
-  pause(): void
-  resume(): void
   /** Stops and removes it. Safe to call when nothing plays. */
   stop(): void
   /**

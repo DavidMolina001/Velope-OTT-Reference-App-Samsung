@@ -102,12 +102,12 @@ Browsing behaviour:
   year and rating, synopsis, **Play** and a watchlist **+ / ✓** button, and page dots. One second
   after the hero shows, Big Buck Bunny plays full screen *behind* the canvas (the canvas is
   see-through, `clearColor` 0, body background in CSS) with sound; the artwork fades out and the
-  gradients, text and buttons stay on top. It is ONE stream for as long as the hero is on screen,
-  paused under the artwork between items and resumed for the next, so each item shows a
-  different stretch of the asset (restarting the stream per item cost this TV ~5 s of dropped
-  frames each time). The preview is capped at 720p; the artwork is TMDB's w1280 (the original,
-  up to 4K, blew the renderer's 160 MB texture budget after one rotation and made it thrash).
-  The hero waits for the splash to fade before playing, so its sound never overlaps the chime. The active dot stretches into a pill that fills over
+  gradients, text and buttons stay on top. Every item is its own title, so every item starts its
+  own preview from the beginning (the one test asset stands in for six different trailers). The
+  preview is capped at 720p and starts at that level; the artwork is TMDB's w1280 (the original,
+  up to 4K, blew the renderer's 160 MB texture budget after one rotation and made it thrash) and
+  the neighbours' artwork is preloaded. The hero waits for the splash to fade before playing, so
+  its sound never overlaps the chime. The active dot stretches into a pill that fills over
   15 s; then the preview stops and the item stays. The next item only comes in (looping) once the
   remote has been idle for 7 s, so the item never changes while the viewer is pressing keys; if
   they were already idle when the preview ended, it moves on straight away. Left/Right move between Play and the tick; Right
@@ -160,10 +160,12 @@ refuses the TV's requests (Shaka error 6007).
   counts, renderer nodes, fps, main-thread long tasks), which is how the numbers below were taken.
 - Rows: 60 fps, no long tasks. Memory is flat (no leaks were found in a code audit of every
   create/destroy pair).
-- Hero item changes went from 5–10 s at 37–48 fps with 300–760 ms freezes to ~58 fps with at most
-  one ~150 ms task (the artwork crossfade), by: w1280 artwork instead of `original`, one continuous
-  720p stream instead of a new player per item, and the page-pill ticker at 300 ms instead of
-  100 ms (each tick redraws the whole scene over the composited video).
+- Hero item changes went from 5–10 s at 37–48 fps with 300–760 ms freezes to ~5 s at 45–53 fps
+  with nothing above 250 ms, by: w1280 artwork instead of `original` (preloaded for the
+  neighbours), the preview starting straight at its 720p cap, and the page-pill ticker at 300 ms
+  instead of 100 ms (each tick redraws the whole scene over the composited video). The remaining
+  cost is the TV starting a new stream, which one-preview-per-title requires: sharing one stream
+  across items was tried and rejected, since the items stand for different titles.
 - All hls.js instances set `backBufferLength: 30` so played-back video is released from memory.
 - Dormant: after 10 minutes without a key press the previews stop (artwork stays); any key wakes it.
 - The see-through canvas costs one full-screen blend per composited frame; it is inherent to

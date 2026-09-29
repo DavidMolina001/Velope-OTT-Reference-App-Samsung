@@ -691,24 +691,22 @@ function tizenHeroPreview(): AppHeroPreview {
           element.src = url
           return
         }
-        // Previews stay at 720p or below (no 1080p transmuxing while the viewer is idle), and
+        // Previews stay at 720p or below (no 1080p transmuxing while the viewer is idle) and start
+        // straight at that level, so a 15 s preview is not spent ramping up through the variants;
         // played-back video is dropped from memory (backBufferLength; the default keeps all of it).
-        const instance = new Hls({ maxBufferLength: 20, backBufferLength: 30 })
+        const instance = new Hls({ maxBufferLength: 12, backBufferLength: 30 })
         hls = instance
         engine = instance as unknown as QualityEngine
-        instance.on(Hls.Events.MANIFEST_PARSED, () => capQuality(instance as unknown as QualityEngine, 720))
+        instance.on(Hls.Events.MANIFEST_PARSED, () => {
+          capQuality(instance as unknown as QualityEngine, 720)
+          instance.startLevel = instance.autoLevelCapping
+        })
         instance.on(Hls.Events.ERROR, (_event: unknown, data: { fatal?: boolean }) => {
           if (data.fatal && current === generation) onFailed()
         })
         instance.loadSource(url)
         instance.attachMedia(element)
       })
-    },
-    pause() {
-      video?.pause()
-    },
-    resume() {
-      void video?.play().catch(() => undefined)
     },
     stop,
     handOver() {

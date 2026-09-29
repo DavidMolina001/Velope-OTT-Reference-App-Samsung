@@ -405,33 +405,13 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
       heroItems().length > 0
   )
 
-  // The hero video: ONE stream for the whole time the hero is on screen, paused while the artwork
-  // covers it and resumed when an item reveals it. Restarting the stream per item cost this TV
-  // about 5 s of dropped frames each time; continuing it costs nothing, and each item shows a
-  // different stretch of the asset. Leaving the hero (rows, details, player, exit dialog,
-  // dormant) stops it; coming back starts it again from 0.
-  const [heroVideoPlaying, setHeroVideoPlaying] = createSignal(false)
-  createEffect(() => {
-    if (!heroActive()) return
-    const heroPreview = host.heroPreview
-    if (!heroPreview) return
-    console.log('HERO preview start')
-    heroPreview.start(
-      CLEAR_STREAM.url,
-      () => setHeroVideoPlaying(true),
-      () => setHeroVideoPlaying(false)
-    )
-    onCleanup(() => {
-      heroPreview.stop()
-      setHeroVideoPlaying(false)
-    })
-  })
-
-  // Per item: after heroPreviewDelay the running video is revealed (the artwork fades out) and
-  // the active page pill fills over heroPreviewLength; if the video cannot play, the pill fills
-  // over the still artwork instead. When it is full the video is covered again and the item
-  // stays; the next item only comes in once the remote has been idle for heroIdleBeforeAdvance,
-  // so an item never changes while the viewer is pressing keys (straight away if already idle).
+  // The hero cycle. Each item is its own title, so each item starts its own preview from the
+  // beginning (the same test asset for all of them, standing in for six different trailers).
+  // After heroPreviewDelay the item's preview plays behind the artwork, which fades out once the
+  // first frame is on screen; the active page pill fills over heroPreviewLength (over the still
+  // artwork if the video cannot play). When it is full the preview stops and the item stays; the
+  // next item only comes in once the remote has been idle for heroIdleBeforeAdvance, so an item
+  // never changes while the viewer is pressing keys (straight away if already idle).
   createEffect(() => {
     const index = state.heroIndex
     const active = heroActive()
@@ -441,6 +421,7 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
     let finished = false
     let ticker: ReturnType<typeof setInterval> | undefined
     let startedAt = 0
+    const heroPreview = host.heroPreview
     const runProgress = () => {
       if (ticker) return
       startedAt = performance.now()
@@ -451,30 +432,31 @@ const Home: Component<{ isAlive?: () => boolean }> = (props) => {
           if (progress < 1) return
           finished = true
           setHeroVideoShowing(false)
-          host.heroPreview?.pause()
+          heroPreview?.stop()
           console.log(`HERO preview finished index=${index}, idle ${Math.round(performance.now() - lastKeyAt)} ms`)
         }
         if (performance.now() - lastKeyAt >= layout.heroIdleBeforeAdvance) stepHero(1)
       }, 300)
     }
-    const [armed, setArmed] = createSignal(false)
-    const delay = setTimeout(() => setArmed(true), layout.heroPreviewDelay)
+    const delay = setTimeout(() => {
+      if (!heroPreview) return runProgress()
+      console.log(`HERO preview start index=${index}`)
+      heroPreview.start(
+        CLEAR_STREAM.url,
+        () => {
+          setHeroVideoShowing(true)
+          runProgress()
+        },
+        () => runProgress()
+      )
+    }, layout.heroPreviewDelay)
     // A stream that never starts must not stall the carousel.
     const fallback = setTimeout(runProgress, layout.heroPreviewDelay + 8000)
-    createEffect(() => {
-      if (!armed() || finished) return
-      if (heroVideoPlaying()) {
-        host.heroPreview?.resume()
-        setHeroVideoShowing(true)
-        console.log(`HERO preview showing index=${index}`)
-        runProgress()
-      }
-    })
     onCleanup(() => {
       clearTimeout(delay)
       clearTimeout(fallback)
       if (ticker) clearInterval(ticker)
-      host.heroPreview?.pause()
+      heroPreview?.stop()
     })
   })
 

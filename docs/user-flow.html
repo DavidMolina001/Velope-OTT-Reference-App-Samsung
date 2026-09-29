@@ -74,7 +74,7 @@ footer { margin-top: 64px; color: var(--fg-3); font-size: 13px; border-top: 1px 
 </style>
 
 <div class="wrap">
-  <p class="eyebrow">Samsung TV (Tizen) · version 1.4.0 · 29 September 2026</p>
+  <p class="eyebrow">Samsung TV (Tizen) · version 1.4.1 · 29 September 2026</p>
   <h1>Reference App user flow<span class="p">.</span></h1>
   <p class="lede">Every screen of the Samsung TV reference app and, for each button on the remote, where it takes you. It describes the build installed on the test TV today. Features that were tried and removed (saved favourites list, static launch image) are not part of it.</p>
   <div class="meta">
@@ -162,7 +162,7 @@ flowchart LR
     <div class="table-wrap"><table>
       <thead><tr><th>Action</th><th>What happens</th><th>Goes to</th></tr></thead>
       <tbody>
-        <tr><td class="key"><span class="auto">Auto</span>After 1 s</td><td>The preview (Big Buck Bunny, 720p) plays behind the text, with sound; it starts only once the splash has faded. One stream runs for as long as the hero is on screen, so each item shows a different stretch of it. The active dot stretches into a pill that fills over 15 s.</td><td class="to"><span class="stay">stays</span></td></tr>
+        <tr><td class="key"><span class="auto">Auto</span>After 1 s</td><td>Each item's preview (Big Buck Bunny, 720p, standing in for that title's trailer) plays from the start behind the text, with sound; it begins only once the splash has faded. The active dot stretches into a pill that fills over 15 s.</td><td class="to"><span class="stay">stays</span></td></tr>
         <tr><td class="key"><span class="auto">Auto</span>Preview ends</td><td>The item stays on screen. The next item comes in only after 7 s with no key press. Loops after the 6th.</td><td class="to"><span class="stay">stays</span></td></tr>
         <tr><td class="key"><span class="auto">Auto</span>10 min idle</td><td>The app goes dormant: previews stop and the artwork stays. Any key wakes it.</td><td class="to"><span class="stay">stays</span></td></tr>
         <tr><td class="key">Right, on Play</td><td>Focus moves to the + button.</td><td class="to"><span class="stay">stays</span></td></tr>
@@ -317,5 +317,5 @@ flowchart LR
     });
   </script>
 
-  <footer>Reference App · Samsung TV (Tizen) reference app · version 1.4.0 · A David Molina production.</footer>
+  <footer>Reference App · Samsung TV (Tizen) reference app · version 1.4.1 · A David Molina production.</footer>
 </div>
